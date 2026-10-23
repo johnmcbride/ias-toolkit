@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-tefca-ias-sop:3.0:recommended",
+  "title": "TEFCA IAS SOP v3.0 -- SHOULD / RECOMMENDED layer (UNOFFICIAL)",
+  "description": "Each def = the MUST-layer def + the generic OIDC RECOMMENDED delta + TEFCA SHOULD/RECOMMENDED items. Passing here implies passing the MUST layer; tools should report errors that appear ONLY here as warnings. Custom annotation keywords: x-precedence, one of: inherited (a base rule applying unchanged, e.g. QTF via IAS §4.2(a) or Facilitated FHIR/SSRAA via IAS §4.2(b)); profile-tightened (a compatible narrowing of a base rule; satisfying the profile satisfies both); explicit-override (a source text expressly replaces a base rule); superseded (an explicitly replaced deadline); unresolved-conflict (incompatible texts with no override; needs governing-priority interpretation or RCE clarification). Requirements are cumulative where compatible; genuine conflicts are never resolved by picking the apparently stricter rule. x-obligation (REQUIRED, MUST, SHALL, CONDITIONAL, MUST-IF-VERIFIED, MUST-ONE-OF, SHOULD, RECOMMENDED, MAY, OPTIONAL) and x-source (spec section). Draft 2020-12 validators collect unknown keywords as annotations; Ajv strict mode needs ajv.addKeyword() for each, or strict:false. x-not-expressible lists rules of that definition no JSON Schema can enforce. *Delta definitions (addressDelta, idTokenClaimsDelta) hold only the SHOULD/RECOMMENDED items, without the MUST layer, so they apply under both the SOP-text reading and QHIN Compliance Bulletin No. 2.",
+  "$ref": "#/$defs/idTokenClaims",
+  "$defs": {
+    "addressDelta": {
+      "propertyNames": {
+        "enum": [
+          "formatted",
+          "street_address",
+          "locality",
+          "region",
+          "postal_code",
+          "country"
+        ],
+        "x-obligation": "RECOMMENDED",
+        "x-source": "IAS SOP v3.0 Table 3 / OIDC Core §5.1.1",
+        "description": "Non-OIDC members are ignored by receivers."
+      },
+      "properties": {
+        "formatted": {
+          "pattern": "^(?:[^\\r\\\\]|\\r\\n|\\\\[^nr]|\\\\$)*$",
+          "x-obligation": "SHOULD",
+          "x-source": "IAS SOP v3.0 Table 3 / OIDC Core §5.1.1",
+          "description": "Lines separated by \\r\\n or \\n; no bare CR, no literal backslash-n."
+        }
+      },
+      "if": {
+        "properties": {
+          "country": {
+            "const": "US"
+          }
+        },
+        "required": [
+          "country"
+        ]
+      },
+      "then": {
+        "properties": {
+          "postal_code": {
+            "pattern": "^[0-9]{5}(-[0-9]{4})?$",
+            "x-obligation": "RECOMMENDED",
+            "x-source": "USPS ZIP+4 form",
+            "description": "Hyphenated ZIP+4 (12345-6789)."
+          }
+        }
+      },
+      "description": "SHOULD/RECOMMENDED address items only (no MUST constraints), so they can be applied to an address object or to each element of a Bulletin 2 historical_address array."
+    },
+    "address": {
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/address"
+        },
+        {
+          "$ref": "#/$defs/addressDelta"
+        }
+      ]
+    },
+    "idTokenClaimsDelta": {
+      "required": [
+        "tefca_ial2claims_version"
+      ],
+      "properties": {
+        "tefca_ial2claims_version": {
+          "x-obligation": "SHOULD",
+          "x-source": "IAS SOP v3.0 §4.9(a)(iv), §4.8",
+          "description": "SOP-text reading: presence SHOULD (§4.9(a)(iv)). Production requires presence and the value '3.0' in the MUST layer, so this entry only records the SOP obligation.",
+          "type": "string"
+        },
+        "given_name": {
+          "pattern": "^[^ ,;|]+( [^ ,;|]+)*$",
+          "x-obligation": "SHOULD",
+          "x-source": "IAS SOP v3.0 Table 2 + OIDC Core §5.1",
+          "description": "Heuristic for the SHALL 'delimited according to OIDC': single spaces between parts; commas/semicolons/pipes are probably non-OIDC delimiters."
+        },
+        "family_name": {
+          "pattern": "^[^ ,;|]+( [^ ,;|]+)*$",
+          "x-obligation": "SHOULD",
+          "x-source": "IAS SOP v3.0 Table 2 + OIDC Core §5.1",
+          "description": "Heuristic for the SHALL 'delimited according to OIDC': single spaces between parts; commas/semicolons/pipes are probably non-OIDC delimiters."
+        },
+        "middle_name": {
+          "pattern": "^[^ ,;|]+( [^ ,;|]+)*$",
+          "x-obligation": "SHOULD",
+          "x-source": "IAS SOP v3.0 Table 2 + OIDC Core §5.1",
+          "description": "Heuristic for the SHALL 'delimited according to OIDC': single spaces between parts; commas/semicolons/pipes are probably non-OIDC delimiters."
+        },
+        "suffix": {
+          "pattern": "^[^ ,;|]+( [^ ,;|]+)*$",
+          "x-obligation": "SHOULD",
+          "x-source": "IAS SOP v3.0 Table 2 + OIDC Core §5.1",
+          "description": "Heuristic for the SHALL 'delimited according to OIDC': single spaces between parts; commas/semicolons/pipes are probably non-OIDC delimiters."
+        },
+        "email": {
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+          "x-obligation": "RECOMMENDED",
+          "x-source": "heuristic",
+          "description": "Domain part contains a dot."
+        },
+        "address": {
+          "$ref": "#/$defs/addressDelta"
+        },
+        "historical_address": {
+          "if": {
+            "type": "array"
+          },
+          "then": {
+            "items": {
+              "$ref": "#/$defs/addressDelta"
+            }
+          },
+          "else": {
+            "$ref": "#/$defs/addressDelta"
+          },
+          "description": "One object, or (QHIN Compliance Bulletin No. 2 §4) each element of an array."
+        },
+        "aud": {
+          "if": {
+            "type": "array"
+          },
+          "then": {
+            "items": {
+              "$ref": "#/$defs/fhirOid"
+            }
+          },
+          "else": {
+            "$ref": "#/$defs/fhirOid"
+          },
+          "x-obligation": "SHOULD",
+          "x-source": "FHIR R4 oid data type; RCE IAS workgroup recommendation, October 22, 2026",
+          "description": "The aud value (or the single array element under Bulletin 2 §5) should comply with the FHIR oid data type, so it matches the FHIR-based RCE Directory entry."
+        }
+      },
+      "dependentRequired": {
+        "email_verified": [
+          "email"
+        ],
+        "phone_number_verified": [
+          "phone_number"
+        ]
+      },
+      "x-obligation": "RECOMMENDED",
+      "x-source": "heuristic (OIDC Core §5.1; QHIN Compliance Bulletin No. 2 §3(e)-(f))",
+      "description": "TEFCA SHOULD/RECOMMENDED items only, without the MUST layer, so the same items apply under the SOP-text reading and under QHIN Compliance Bulletin No. 2. dependentRequired: a *_verified flag without the claim it qualifies is defined by neither OIDC nor the Bulletin (Bulletin §3(e)-(f) speak of a flag accompanying its claim); omit it."
+    },
+    "idTokenClaims": {
+      "description": "SOP-text reading: MUST layer + generic OIDC RECOMMENDED + TEFCA SHOULD items. For the Bulletin 2 reading use urn:x-tefca-qhin-bulletin-2:1.0:schema#/$defs/idTokenClaimsRecommended.",
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/idTokenClaims"
+        },
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/idTokenClaimsRecommended"
+        },
+        {
+          "$ref": "#/$defs/idTokenClaimsDelta"
+        }
+      ]
+    },
+    "idTokenHeader": {
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/idTokenHeader"
+        }
+      ],
+      "description": "No SHOULD items beyond the MUST layer."
+    },
+    "jwks": {
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/jwks"
+        },
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/jwksRecommended"
+        }
+      ],
+      "properties": {
+        "keys": {
+          "items": {
+            "if": {
+              "properties": {
+                "kty": {
+                  "const": "RSA"
+                }
+              },
+              "required": [
+                "kty"
+              ]
+            },
+            "then": {
+              "required": [
+                "kid"
+              ],
+              "x-obligation": "RECOMMENDED",
+              "x-source": "IAS SOP v3.0 Table 1 kid (derived)",
+              "description": "RSA signing keys carry kid so the token kid can select them."
+            }
+          }
+        }
+      }
+    },
+    "discovery": {
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/discovery"
+        },
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/discoveryRecommended"
+        }
+      ]
+    },
+    "tefcaIasExtension": {
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/tefcaIasExtension"
+        }
+      ],
+      "description": "No SHOULD items in this SOP."
+    },
+    "fhirOid": {
+      "type": "string",
+      "pattern": "^urn:oid:[0-2](\\.(0|[1-9][0-9]*))+$",
+      "x-obligation": "SHOULD",
+      "x-source": "FHIR R4 oid data type; RCE IAS workgroup recommendation, October 22, 2026",
+      "description": "FHIR oid form: lower-case 'urn:oid:' prefix (regex urn:oid:[0-2](\\.(0|[1-9][0-9]*))+)."
+    }
+  }
+}

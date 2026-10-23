@@ -1,0 +1,882 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-oidc:core-1.0:schema",
+  "title": "OpenID Connect Core 1.0 / Discovery 1.0 / JOSE -- generic JSON artifacts (UNOFFICIAL)",
+  "description": "Framework-neutral schema. Requirement defs validate what the specs REQUIRE; *Recommended defs are delta schemas holding only RECOMMENDED items (validate them separately, report as warnings). Sources: OIDC Core 1.0 and Discovery 1.0 incorporating errata set 2, RFC 7515/7517/7518/7519. Custom annotation keywords: x-precedence, one of: inherited (a base rule applying unchanged, e.g. QTF via IAS §4.2(a) or Facilitated FHIR/SSRAA via IAS §4.2(b)); profile-tightened (a compatible narrowing of a base rule; satisfying the profile satisfies both); explicit-override (a source text expressly replaces a base rule); superseded (an explicitly replaced deadline); unresolved-conflict (incompatible texts with no override; needs governing-priority interpretation or RCE clarification). Requirements are cumulative where compatible; genuine conflicts are never resolved by picking the apparently stricter rule. x-obligation (REQUIRED, MUST, SHALL, CONDITIONAL, MUST-IF-VERIFIED, MUST-ONE-OF, SHOULD, RECOMMENDED, MAY, OPTIONAL) and x-source (spec section). Draft 2020-12 validators collect unknown keywords as annotations; Ajv strict mode needs ajv.addKeyword() for each, or strict:false. x-not-expressible lists rules of that definition no JSON Schema can enforce.",
+  "$ref": "#/$defs/idTokenClaims",
+  "$defs": {
+    "numericDate": {
+      "type": "number",
+      "minimum": 0,
+      "description": "RFC 7519 §2 NumericDate (seconds)."
+    },
+    "stringOrUri": {
+      "type": "string"
+    },
+    "issuerUrl": {
+      "type": "string",
+      "pattern": "^https://[^\\s/?#]+[^\\s?#]*$",
+      "description": "https URL with host, optional port/path, no query or fragment (Core §2)."
+    },
+    "b64url": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]*$"
+    },
+    "joseHeader": {
+      "type": "object",
+      "required": [
+        "alg"
+      ],
+      "x-not-expressible": [
+        "kid REQUIRED when the referenced JWK Set has multiple keys (Core §10.1) -- cross-document"
+      ],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7515 §4.1.1",
+          "description": "ID Tokens MUST be signed; 'none' only in the narrow Core §2 case."
+        },
+        "kid": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §10.1",
+          "description": "REQUIRED if the JWK Set holds multiple keys."
+        },
+        "typ": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.9"
+        },
+        "cty": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.10"
+        },
+        "jku": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.2"
+        },
+        "x5u": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.5"
+        },
+        "x5c": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.6"
+        },
+        "x5t": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.7"
+        },
+        "x5t#S256": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.8"
+        },
+        "crit": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7515 §4.1.11"
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "x-source": "OIDC Core 1.0 (errata 2) §5.1.1",
+      "properties": {
+        "formatted": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1.1"
+        },
+        "street_address": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1.1"
+        },
+        "locality": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1.1"
+        },
+        "region": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1.1"
+        },
+        "postal_code": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1.1"
+        },
+        "country": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1.1"
+        }
+      }
+    },
+    "standardClaims": {
+      "type": "object",
+      "properties": {
+        "sub": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "given_name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "family_name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "middle_name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "nickname": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "preferred_username": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "zoneinfo": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "locale": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "profile": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "picture": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "email": {
+          "type": "string",
+          "pattern": "^[^@\\s]+@[^@\\s]+$",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1",
+          "description": "If present its value MUST conform to RFC 5322 addr-spec (pattern is a loose approximation)."
+        },
+        "email_verified": {
+          "type": "boolean",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "gender": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1",
+          "description": "'female' / 'male' defined; others MAY be used."
+        },
+        "birthdate": {
+          "type": "string",
+          "pattern": "^[0-9]{4}(-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]))?$",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1",
+          "description": "ISO 8601 YYYY-MM-DD, or YYYY; year 0000 = year omitted."
+        },
+        "phone_number": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1",
+          "description": "E.164 RECOMMENDED (see idTokenClaimsRecommended)."
+        },
+        "phone_number_verified": {
+          "type": "boolean",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "address": {
+          "$ref": "#/$defs/address",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1"
+        }
+      },
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_]*#[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$": {
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.2",
+          "description": "Language/script-tagged claim (BCP47)."
+        }
+      }
+    },
+    "idTokenClaims": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/standardClaims"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "iss",
+        "sub",
+        "aud",
+        "exp",
+        "iat"
+      ],
+      "x-not-expressible": [
+        "aud contains the RP client_id (Core §2)",
+        "exp in the future, iat sane (Core §3.1.3.7)",
+        "nonce equals the request nonce (Core §3.1.3.7)",
+        "sub never reassigned (Core §2)",
+        "auth_time / nonce / at_hash / c_hash presence depends on the request and flow"
+      ],
+      "properties": {
+        "iss": {
+          "$ref": "#/$defs/issuerUrl",
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "sub": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "aud": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/stringOrUri"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/stringOrUri"
+              }
+            }
+          ],
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "exp": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "iat": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "nbf": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7519 §4.1.5"
+        },
+        "jti": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7519 §4.1.7"
+        },
+        "auth_time": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §2",
+          "description": "REQUIRED when max_age requested or auth_time Essential."
+        },
+        "nonce": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §2",
+          "description": "REQUIRED if sent in the request."
+        },
+        "acr": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "amr": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "azp": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §2"
+        },
+        "at_hash": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §3.1.3.6/§3.2.2.10"
+        },
+        "c_hash": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "OIDC Core 1.0 (errata 2) §3.3.2.11"
+        },
+        "sid": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Front/Back-Channel Logout"
+        }
+      }
+    },
+    "idTokenClaimsRecommended": {
+      "description": "DELTA: RECOMMENDED items only. Validate in addition to idTokenClaims; failures are warnings.",
+      "properties": {
+        "phone_number": {
+          "type": "string",
+          "pattern": "^\\+[1-9][0-9 ().-]{5,}$",
+          "x-obligation": "RECOMMENDED",
+          "x-source": "OIDC Core 1.0 (errata 2) §5.1",
+          "description": "E.164, e.g. +1 865 555 0100."
+        }
+      }
+    },
+    "jwk": {
+      "type": "object",
+      "required": [
+        "kty"
+      ],
+      "properties": {
+        "kty": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7517 §4.1"
+        },
+        "use": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.2"
+        },
+        "key_ops": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.3"
+        },
+        "alg": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.4"
+        },
+        "kid": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.5"
+        },
+        "x5u": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.6"
+        },
+        "x5c": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.7",
+          "description": "Standard base64 DER (NOT base64url), leaf first."
+        },
+        "x5t": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.8"
+        },
+        "x5t#S256": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7517 §4.9"
+        },
+        "n": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7518 §6.3.1",
+          "description": "REQUIRED for kty RSA."
+        },
+        "e": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7518 §6.3.1",
+          "description": "REQUIRED for kty RSA."
+        },
+        "crv": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7518 §6.2.1"
+        },
+        "x": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7518 §6.2.1"
+        },
+        "y": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7518 §6.2.1"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kty": {
+                "const": "RSA"
+              }
+            },
+            "required": [
+              "kty"
+            ]
+          },
+          "then": {
+            "required": [
+              "n",
+              "e"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kty": {
+                "const": "EC"
+              }
+            },
+            "required": [
+              "kty"
+            ]
+          },
+          "then": {
+            "required": [
+              "crv",
+              "x",
+              "y"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kty": {
+                "const": "OKP"
+              }
+            },
+            "required": [
+              "kty"
+            ]
+          },
+          "then": {
+            "required": [
+              "crv",
+              "x"
+            ]
+          }
+        }
+      ]
+    },
+    "publicJwk": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/jwk"
+        }
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "d"
+            ]
+          },
+          {
+            "required": [
+              "p"
+            ]
+          },
+          {
+            "required": [
+              "q"
+            ]
+          },
+          {
+            "required": [
+              "dp"
+            ]
+          },
+          {
+            "required": [
+              "dq"
+            ]
+          },
+          {
+            "required": [
+              "qi"
+            ]
+          },
+          {
+            "required": [
+              "oth"
+            ]
+          },
+          {
+            "required": [
+              "k"
+            ]
+          },
+          {
+            "properties": {
+              "kty": {
+                "const": "oct"
+              }
+            },
+            "required": [
+              "kty"
+            ]
+          }
+        ]
+      },
+      "description": "Public material only -- what a published jwks_uri should contain."
+    },
+    "jwks": {
+      "type": "object",
+      "required": [
+        "keys"
+      ],
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jwk"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7517 §5.1"
+        }
+      }
+    },
+    "publishedJwks": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/jwks"
+        }
+      ],
+      "x-not-expressible": [
+        "kid values unique within the set"
+      ],
+      "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/publicJwk"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "keys": {
+            "contains": {
+              "properties": {
+                "use": {
+                  "const": "enc"
+                }
+              },
+              "required": [
+                "use"
+              ]
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "keys": {
+            "items": {
+              "required": [
+                "use"
+              ]
+            }
+          }
+        }
+      },
+      "x-source": "OIDC Discovery jwks_uri: 'use' REQUIRED on all keys when signing and encryption keys are both published"
+    },
+    "jwksRecommended": {
+      "description": "DELTA: with more than one key, every key should carry kid (derived from Core §10.1 header-kid rule).",
+      "x-obligation": "RECOMMENDED",
+      "x-source": "OIDC Core 1.0 (errata 2) §10.1 (derived)",
+      "if": {
+        "properties": {
+          "keys": {
+            "minItems": 2
+          }
+        },
+        "required": [
+          "keys"
+        ]
+      },
+      "then": {
+        "properties": {
+          "keys": {
+            "items": {
+              "required": [
+                "kid"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "required": [
+        "issuer",
+        "authorization_endpoint",
+        "jwks_uri",
+        "response_types_supported",
+        "subject_types_supported",
+        "id_token_signing_alg_values_supported"
+      ],
+      "x-not-expressible": [
+        "issuer identical to the iss of issued tokens (Discovery §4.3)",
+        "token_endpoint REQUIRED unless only the Implicit Flow is used"
+      ],
+      "properties": {
+        "issuer": {
+          "$ref": "#/$defs/issuerUrl",
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "authorization_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "token_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "userinfo_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "RECOMMENDED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "jwks_uri": {
+          "type": "string",
+          "pattern": "^https://",
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3",
+          "description": "MUST use https."
+        },
+        "registration_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-obligation": "RECOMMENDED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "scopes_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "contains": {
+            "const": "openid"
+          },
+          "x-obligation": "RECOMMENDED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3",
+          "description": "If present MUST include 'openid'."
+        },
+        "response_types_supported": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "response_modes_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "grant_types_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "acr_values_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "subject_types_supported": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "public",
+              "pairwise"
+            ]
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "id_token_signing_alg_values_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "contains": {
+            "const": "RS256"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3",
+          "description": "RS256 MUST be included."
+        },
+        "id_token_encryption_alg_values_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "id_token_encryption_enc_values_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "token_endpoint_auth_methods_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "claims_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "RECOMMENDED",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "claims_parameter_supported": {
+          "type": "boolean",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "request_parameter_supported": {
+          "type": "boolean",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "request_uri_parameter_supported": {
+          "type": "boolean",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        },
+        "require_request_uri_registration": {
+          "type": "boolean",
+          "x-obligation": "OPTIONAL",
+          "x-source": "OIDC Discovery 1.0 (errata 2) §3"
+        }
+      }
+    },
+    "discoveryRecommended": {
+      "description": "DELTA: RECOMMENDED metadata (plus token_endpoint, REQUIRED unless implicit-only).",
+      "x-obligation": "RECOMMENDED",
+      "x-source": "OIDC Discovery 1.0 (errata 2) §3",
+      "required": [
+        "userinfo_endpoint",
+        "registration_endpoint",
+        "scopes_supported",
+        "claims_supported",
+        "token_endpoint"
+      ]
+    }
+  }
+}

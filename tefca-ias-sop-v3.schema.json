@@ -1,0 +1,757 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-tefca-ias-sop:3.0:schema",
+  "title": "TEFCA XP Implementation SOP: Individual Access Services (IAS) v3.0 -- MUST layer (UNOFFICIAL)",
+  "description": "Unofficial profile of the generic OIDC schema (urn:x-oidc:core-1.0:schema) derived from SOP-IAS-XP-v3 (effective 2026-08-03). PRECEDENCE: requirements are cumulative where compatible. The IAS SOP defines IAS-specific content; QTF is inherited via IAS §4.2(a) and the Facilitated FHIR SOP / SSRAA via IAS §4.2(b); IAS §4.2(b) explicitly supersedes the Facilitated FHIR deadlines for IAS FHIR endpoints. Genuine conflicts are marked unresolved-conflict. Holds only MUST/SHALL/REQUIRED constraints; SHOULD/RECOMMENDED items are in urn:x-tefca-ias-sop:3.0:recommended. Load all three files together. Custom annotation keywords: x-precedence, one of: inherited (a base rule applying unchanged, e.g. QTF via IAS §4.2(a) or Facilitated FHIR/SSRAA via IAS §4.2(b)); profile-tightened (a compatible narrowing of a base rule; satisfying the profile satisfies both); explicit-override (a source text expressly replaces a base rule); superseded (an explicitly replaced deadline); unresolved-conflict (incompatible texts with no override; needs governing-priority interpretation or RCE clarification). Requirements are cumulative where compatible; genuine conflicts are never resolved by picking the apparently stricter rule. x-obligation (REQUIRED, MUST, SHALL, CONDITIONAL, MUST-IF-VERIFIED, MUST-ONE-OF, SHOULD, RECOMMENDED, MAY, OPTIONAL) and x-source (spec section). Draft 2020-12 validators collect unknown keywords as annotations; Ajv strict mode needs ajv.addKeyword() for each, or strict:false. x-not-expressible lists rules of that definition no JSON Schema can enforce. QHIN Compliance Bulletin No. 2 (toolkit 1.5.0): idTokenClaims is the SOP-text reading; idTokenClaimsCore holds the constraints it shares with urn:x-tefca-qhin-bulletin-2:1.0:schema, which replaces idTokenClaims from the Bulletin's issue date (October 13, 2026).",
+  "$ref": "#/$defs/idTokenClaims",
+  "$defs": {
+    "oidUrn": {
+      "type": "string",
+      "pattern": "^[uU][rR][nN]:[oO][iI][dD]:[0-2](\\.(0|[1-9][0-9]*))+$",
+      "x-source": "RFC 3061; RFC 8141 §3.1; IAS SOP v3.0 Table 2 + footnote 13",
+      "description": "An OID URN. The 'urn' scheme and the 'oid' NID are case-insensitive (RFC 8141 §3.1; RFC 3061's own example is URN:OID:0.9.2342.19200300.100.4); the OID itself has no leading zeros. The lower-case form required by the FHIR oid data type, which the RCE IAS workgroup recommends (October 22, 2026), is checked in the SHOULD layer."
+    },
+    "iso3166Alpha2": {
+      "enum": [
+        "AD",
+        "AE",
+        "AF",
+        "AG",
+        "AI",
+        "AL",
+        "AM",
+        "AO",
+        "AQ",
+        "AR",
+        "AS",
+        "AT",
+        "AU",
+        "AW",
+        "AX",
+        "AZ",
+        "BA",
+        "BB",
+        "BD",
+        "BE",
+        "BF",
+        "BG",
+        "BH",
+        "BI",
+        "BJ",
+        "BL",
+        "BM",
+        "BN",
+        "BO",
+        "BQ",
+        "BR",
+        "BS",
+        "BT",
+        "BV",
+        "BW",
+        "BY",
+        "BZ",
+        "CA",
+        "CC",
+        "CD",
+        "CF",
+        "CG",
+        "CH",
+        "CI",
+        "CK",
+        "CL",
+        "CM",
+        "CN",
+        "CO",
+        "CR",
+        "CU",
+        "CV",
+        "CW",
+        "CX",
+        "CY",
+        "CZ",
+        "DE",
+        "DJ",
+        "DK",
+        "DM",
+        "DO",
+        "DZ",
+        "EC",
+        "EE",
+        "EG",
+        "EH",
+        "ER",
+        "ES",
+        "ET",
+        "FI",
+        "FJ",
+        "FK",
+        "FM",
+        "FO",
+        "FR",
+        "GA",
+        "GB",
+        "GD",
+        "GE",
+        "GF",
+        "GG",
+        "GH",
+        "GI",
+        "GL",
+        "GM",
+        "GN",
+        "GP",
+        "GQ",
+        "GR",
+        "GS",
+        "GT",
+        "GU",
+        "GW",
+        "GY",
+        "HK",
+        "HM",
+        "HN",
+        "HR",
+        "HT",
+        "HU",
+        "ID",
+        "IE",
+        "IL",
+        "IM",
+        "IN",
+        "IO",
+        "IQ",
+        "IR",
+        "IS",
+        "IT",
+        "JE",
+        "JM",
+        "JO",
+        "JP",
+        "KE",
+        "KG",
+        "KH",
+        "KI",
+        "KM",
+        "KN",
+        "KP",
+        "KR",
+        "KW",
+        "KY",
+        "KZ",
+        "LA",
+        "LB",
+        "LC",
+        "LI",
+        "LK",
+        "LR",
+        "LS",
+        "LT",
+        "LU",
+        "LV",
+        "LY",
+        "MA",
+        "MC",
+        "MD",
+        "ME",
+        "MF",
+        "MG",
+        "MH",
+        "MK",
+        "ML",
+        "MM",
+        "MN",
+        "MO",
+        "MP",
+        "MQ",
+        "MR",
+        "MS",
+        "MT",
+        "MU",
+        "MV",
+        "MW",
+        "MX",
+        "MY",
+        "MZ",
+        "NA",
+        "NC",
+        "NE",
+        "NF",
+        "NG",
+        "NI",
+        "NL",
+        "NO",
+        "NP",
+        "NR",
+        "NU",
+        "NZ",
+        "OM",
+        "PA",
+        "PE",
+        "PF",
+        "PG",
+        "PH",
+        "PK",
+        "PL",
+        "PM",
+        "PN",
+        "PR",
+        "PS",
+        "PT",
+        "PW",
+        "PY",
+        "QA",
+        "RE",
+        "RO",
+        "RS",
+        "RU",
+        "RW",
+        "SA",
+        "SB",
+        "SC",
+        "SD",
+        "SE",
+        "SG",
+        "SH",
+        "SI",
+        "SJ",
+        "SK",
+        "SL",
+        "SM",
+        "SN",
+        "SO",
+        "SR",
+        "SS",
+        "ST",
+        "SV",
+        "SX",
+        "SY",
+        "SZ",
+        "TC",
+        "TD",
+        "TF",
+        "TG",
+        "TH",
+        "TJ",
+        "TK",
+        "TL",
+        "TM",
+        "TN",
+        "TO",
+        "TR",
+        "TT",
+        "TV",
+        "TW",
+        "TZ",
+        "UA",
+        "UG",
+        "UM",
+        "US",
+        "UY",
+        "UZ",
+        "VA",
+        "VC",
+        "VE",
+        "VG",
+        "VI",
+        "VN",
+        "VU",
+        "WF",
+        "WS",
+        "YE",
+        "YT",
+        "ZA",
+        "ZM",
+        "ZW"
+      ],
+      "x-source": "ISO 3166-1 alpha-2 (249 assigned codes); IAS SOP v3.0 Table 3; RCE IAS workgroup clarification, October 22, 2026",
+      "description": "Upper-case ISO 3166-1 alpha-2 country code (e.g. US). IAS Table 3 says 'Country code based on the 2-letter codes defined in ISO 3166-2'; the RCE IAS workgroup (October 22, 2026) clarified ISO 3166-1 alpha-2. Reserved codes such as UK (use GB) are not assigned codes."
+    },
+    "jwt": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    },
+    "idTokenHeader": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/joseHeader"
+        }
+      ],
+      "required": [
+        "alg",
+        "kid",
+        "typ"
+      ],
+      "properties": {
+        "alg": {
+          "const": "RS256",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.9(a)(ii), Table 1"
+        },
+        "kid": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 1"
+        },
+        "typ": {
+          "const": "JWT",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 1"
+        }
+      }
+    },
+    "address": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/address"
+        }
+      ],
+      "required": [
+        "street_address",
+        "locality",
+        "region",
+        "postal_code",
+        "country"
+      ],
+      "properties": {
+        "formatted": {
+          "x-obligation": "OPTIONAL",
+          "x-source": "IAS SOP v3.0 Table 3"
+        },
+        "street_address": {
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "IAS SOP v3.0 Table 3"
+        },
+        "locality": {
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "IAS SOP v3.0 Table 3"
+        },
+        "region": {
+          "pattern": "^[A-Z]{2}$",
+          "x-obligation": "REQUIRED",
+          "x-source": "IAS SOP v3.0 Table 3",
+          "description": "2-letter subdivision part of the ISO 3166-2 code, without the country prefix (CA from US-CA), upper case; for US addresses one of the 57 ISO 3166-2:US codes (RCE IAS workgroup clarification, October 22, 2026)."
+        },
+        "postal_code": {
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "IAS SOP v3.0 Table 3"
+        },
+        "country": {
+          "x-obligation": "REQUIRED",
+          "x-source": "IAS SOP v3.0 Table 3; ISO 3166-1 alpha-2 (RCE IAS workgroup clarification, October 22, 2026)",
+          "$ref": "#/$defs/iso3166Alpha2"
+        }
+      },
+      "if": {
+        "properties": {
+          "country": {
+            "const": "US"
+          }
+        },
+        "required": [
+          "country"
+        ]
+      },
+      "then": {
+        "properties": {
+          "region": {
+            "enum": [
+              "AL",
+              "AK",
+              "AZ",
+              "AR",
+              "CA",
+              "CO",
+              "CT",
+              "DE",
+              "FL",
+              "GA",
+              "HI",
+              "ID",
+              "IL",
+              "IN",
+              "IA",
+              "KS",
+              "KY",
+              "LA",
+              "ME",
+              "MD",
+              "MA",
+              "MI",
+              "MN",
+              "MS",
+              "MO",
+              "MT",
+              "NE",
+              "NV",
+              "NH",
+              "NJ",
+              "NM",
+              "NY",
+              "NC",
+              "ND",
+              "OH",
+              "OK",
+              "OR",
+              "PA",
+              "RI",
+              "SC",
+              "SD",
+              "TN",
+              "TX",
+              "UT",
+              "VT",
+              "VA",
+              "WA",
+              "WV",
+              "WI",
+              "WY",
+              "DC",
+              "AS",
+              "GU",
+              "MP",
+              "PR",
+              "UM",
+              "VI"
+            ]
+          },
+          "postal_code": {
+            "pattern": "^[0-9]{5}(-?[0-9]{4})?$"
+          }
+        }
+      }
+    },
+    "idTokenClaimsCore": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/idTokenClaims"
+        }
+      ],
+      "required": [
+        "iss",
+        "sub",
+        "aud",
+        "iat",
+        "exp",
+        "jti",
+        "given_name",
+        "family_name",
+        "birthdate",
+        "address",
+        "tefca_ial2claims_version"
+      ],
+      "x-not-expressible": [
+        "RS256 signature validity against the CSP JWKS (§4.9(a)(ii))",
+        "aud equals the receiving IAS Provider's own HCID (Table 2 footnote 13)",
+        "exp 'appropriately set ... short-lived' (Table 2)",
+        "claims were actually verified by the CSP (§4.9(a)(iii)) beyond *_verified flags",
+        "MUST-IF-VERIFIED claims present whenever the CSP verified them (Table 2)",
+        "csp_issued_identifier stable over time and SHOULD be unique across the CSP's clients (§4.9(a)(v))",
+        "distinct prod / non-prod issuer URLs (§4.3(e))",
+        "token present in every PD, DQ, DR and FHIR auth request (§4.4(f), §4.9(d))",
+        "XCPD body carries all verified demographics (§4.4(e)); Demographics Double-Check (§4.7)",
+        "ENCOURAGED (footnote 2): CSPs that verify historical addresses, extra emails/phones, CSP identifiers"
+      ],
+      "properties": {
+        "iss": {
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2"
+        },
+        "sub": {
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.9(a)(iii) via OIDC Core §2"
+        },
+        "aud": {
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2 + footnote 13",
+          "description": "Value form is set by idTokenClaims (SOP-text reading) or by the Bulletin 2 layer (urn:x-tefca-qhin-bulletin-2:1.0:schema)."
+        },
+        "iat": {
+          "maximum": 99999999999,
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2"
+        },
+        "exp": {
+          "maximum": 99999999999,
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2",
+          "description": "Maximum rejects millisecond values."
+        },
+        "jti": {
+          "minLength": 1,
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2"
+        },
+        "given_name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S(.*\\S)?$",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2, §4.4(d)"
+        },
+        "family_name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S(.*\\S)?$",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2, §4.4(d)"
+        },
+        "birthdate": {
+          "pattern": "^[12][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2",
+          "description": "All three elements present; partial dates SHALL NOT be used."
+        },
+        "address": {
+          "$ref": "#/$defs/address",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2/3"
+        },
+        "email": {
+          "x-obligation": "MUST-ONE-OF",
+          "x-source": "IAS SOP v3.0 Table 2, §4.4(d)(viii)",
+          "description": "email and/or phone_number."
+        },
+        "phone_number": {
+          "x-obligation": "MUST-ONE-OF",
+          "x-source": "IAS SOP v3.0 Table 2, §4.4(d)(viii)"
+        },
+        "middle_name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S(.*\\S)?$",
+          "x-obligation": "MUST-IF-VERIFIED",
+          "x-source": "IAS SOP v3.0 Table 2"
+        },
+        "suffix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S(.*\\S)?$",
+          "x-obligation": "MUST-IF-VERIFIED",
+          "x-source": "IAS SOP v3.0 Table 2"
+        },
+        "gender": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "MUST-IF-VERIFIED",
+          "x-source": "IAS SOP v3.0 Table 2"
+        },
+        "historical_address": {
+          "x-obligation": "MUST-IF-VERIFIED",
+          "x-source": "IAS SOP v3.0 Table 2",
+          "description": "Form is set by idTokenClaims (one object) or by the Bulletin 2 layer (object or array of objects)."
+        },
+        "email_verified": {
+          "x-source": "OIDC Core §5.1; IAS SOP v3.0 §4.9(a)(iii)",
+          "description": "Allowed values are set by idTokenClaims (true only) or by the Bulletin 2 layer (§3)."
+        },
+        "phone_number_verified": {
+          "x-source": "OIDC Core §5.1; IAS SOP v3.0 §4.9(a)(iii)",
+          "description": "Allowed values are set by idTokenClaims (true only) or by the Bulletin 2 layer (§3)."
+        },
+        "tefca_ial2claims_version": {
+          "type": "string",
+          "x-obligation": "MUST (production decision; QHIN Compliance Bulletin No. 2 §2(a))",
+          "x-source": "IAS SOP v3.0 §4.9(a)(iv), §4.8 (IAL2 Claims Tokens, October 1, 2026); implementation-group production decision; QHIN Compliance Bulletin No. 2 §2(a) (issued October 13, 2026)",
+          "description": "Required, with the string value '3.0'. The SOP text makes the claim a SHOULD and defaults an omitted claim to '1.0' (§4.9(a)(iv)); the implementation group decided for production, keyed to the §4.8 date of October 1, 2026, that every IAL2 Claims Token carries '3.0', and Bulletin 2 §2(a) now requires it ('Every IAL2 Claims Token issued based on the IAS SOP v3.0 SHALL include the tefca_ial2claims_version claim with the string value “3.0”'). No 'default' keyword: validators that inject defaults would insert '1.0' and then fail the const.",
+          "const": "3.0",
+          "x-precedence": "explicit-override (Bulletin 2 §1(b), §2(a): SHOULD becomes SHALL with the value '3.0')"
+        },
+        "csp_issued_identifier": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "MAY",
+          "x-source": "IAS SOP v3.0 §4.9(a)(v)"
+        }
+      },
+      "patternProperties": {
+        "^http://rce\\.sequoiaproject\\.org/OIDC/claim/.+$": {
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.9(c)",
+          "description": "Namespace for additional verified claims."
+        }
+      },
+      "description": "Constraints shared by the SOP-text reading (#/$defs/idTokenClaims) and the QHIN Compliance Bulletin No. 2 reading (urn:x-tefca-qhin-bulletin-2:1.0:schema#/$defs/idTokenClaims). Not a complete profile on its own: aud, historical_address, the *_verified flags and the email/phone rule are set by one of those two definitions."
+    },
+    "idTokenClaims": {
+      "description": "SOP-text reading of IAS SOP v3.0 without QHIN Compliance Bulletin No. 2: aud one string, historical_address one object, *_verified flags true only. ias_sop_checker uses it with --bulletin2 off or an evaluation date before 2026-10-13. From the Bulletin's issue date (October 13, 2026) the Bulletin 2 layer governs where the SOP is ambiguous or in conflict (Bulletin §1(b)).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/idTokenClaimsCore"
+        }
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "email"
+          ]
+        },
+        {
+          "required": [
+            "phone_number"
+          ]
+        }
+      ],
+      "properties": {
+        "aud": {
+          "$ref": "#/$defs/oidUrn",
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 Table 2 + footnote 13",
+          "description": "A single JSON string: the IAS Provider HCID as urn:oid:<oid>. Table 2 says aud MUST be the unique HCID of the IAS Provider's Directory Entry; an array (permitted by generic OIDC Core §2) is not that value.",
+          "x-precedence": "profile-tightened (IAS Table 2 / footnote 13 narrow OIDC's string-or-array aud to one HCID string)"
+        },
+        "historical_address": {
+          "$ref": "#/$defs/address",
+          "x-obligation": "MUST-IF-VERIFIED",
+          "x-source": "IAS SOP v3.0 Table 2",
+          "description": "Same format as 'address': a single JSON object (Table 2 and Table 3). An array is not that format. Footnote 2 encourages verifying 'historical addresses' (plural), but the SOP defines no multi-address representation: open question.",
+          "x-precedence": "profile-tightened (IAS Table 2 'same format as address')"
+        },
+        "email_verified": {
+          "const": true,
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.9(a)(iii)",
+          "description": "No unverified demographics."
+        },
+        "phone_number_verified": {
+          "const": true,
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.9(a)(iii)"
+        }
+      }
+    },
+    "idTokenClaimsStrict": {
+      "$ref": "#/$defs/idTokenClaims",
+      "unevaluatedProperties": false,
+      "description": "Rejects claims not defined by OIDC, named by the SOP, or RCE-namespaced."
+    },
+    "decodedIdToken": {
+      "type": "object",
+      "required": [
+        "header",
+        "payload"
+      ],
+      "properties": {
+        "header": {
+          "$ref": "#/$defs/idTokenHeader"
+        },
+        "payload": {
+          "$ref": "#/$defs/idTokenClaims"
+        }
+      }
+    },
+    "jwks": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/publishedJwks"
+        }
+      ],
+      "x-obligation": "MUST",
+      "x-source": "IAS SOP v3.0 §4.3(d), §4.9(a)(i)",
+      "properties": {
+        "keys": {
+          "contains": {
+            "properties": {
+              "kty": {
+                "const": "RSA"
+              }
+            },
+            "required": [
+              "kty"
+            ]
+          },
+          "items": {
+            "properties": {
+              "x5c": {
+                "x-obligation": "MAY",
+                "x-source": "IAS SOP v3.0 §4.9(a)(i)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "discovery": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/discovery"
+        }
+      ],
+      "x-obligation": "MUST",
+      "x-source": "IAS SOP v3.0 §4.3(f)"
+    },
+    "tefcaIasExtension": {
+      "$comment": "IAS §4.9(e): id_token element inside the TEFCA_IAS extension. Structure per FF SOP v2.0 Table 4 (applies via IAS §4.2(b)); token CONTENT governed by IAS §4.9 (FF Table 4 defers to the IAS SOP).",
+      "x-precedence": "inherited via IAS §4.2(b) (structure: FF Table 4); profile-tightened by IAS (id_token content per §4.9)",
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-facilitated-fhir:2.0:schema#/$defs/tefcaIasExtension"
+        }
+      ],
+      "required": [
+        "id_token"
+      ],
+      "properties": {
+        "id_token": {
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.4(f), §4.9(d)-(e)",
+          "description": "Client-side MUST under the IAS SOP (FF only says servers SHOULD reject if missing).",
+          "x-precedence": "profile-tightened (IAS client MUST is compatible with FF's server-side SHOULD)"
+        }
+      }
+    },
+    "iasHl7B2b": {
+      "$comment": "hl7-b2b object used for IAS client-credentials requests",
+      "x-precedence": "profile-tightened (IAS §4.1 fixes the XP value); structure inherited via IAS §4.2(b) (FF Table 2, SSRAA §5.2.1.1)",
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-facilitated-fhir:2.0:schema#/$defs/b2bExtension"
+        }
+      ],
+      "properties": {
+        "purpose_of_use": {
+          "items": {
+            "pattern": "^(urn:oid:2\\.16\\.840\\.1\\.113883\\.3\\.7204\\.1\\.5\\.2\\.1#)?T-IAS$"
+          },
+          "x-obligation": "MUST",
+          "x-source": "IAS SOP v3.0 §4.1 + FF Table 2 + FF §6.4",
+          "description": "Exactly one code, T-IAS (bare, or system#code with the XP code system OID)."
+        }
+      }
+    },
+    "iasClientCredentialsAssertion": {
+      "$comment": "UDAP Authentication JWT claims for an IAS client-credentials token request",
+      "x-precedence": "inherited via IAS §4.2(b)",
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-facilitated-fhir:2.0:schema#/$defs/authenticationJwtClaims"
+        }
+      ],
+      "required": [
+        "extensions"
+      ],
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "required": [
+            "hl7-b2b",
+            "tefca_ias"
+          ],
+          "properties": {
+            "hl7-b2b": {
+              "$ref": "#/$defs/iasHl7B2b"
+            },
+            "tefca_ias": {
+              "$ref": "#/$defs/tefcaIasExtension"
+            }
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11 IAS(3), §6.11 B2B(1)"
+        }
+      }
+    }
+  }
+}

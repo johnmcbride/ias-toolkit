@@ -1,0 +1,437 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-tefca-facilitated-fhir:2.0:schema",
+  "title": "TEFCA SOP: Facilitated FHIR Implementation v2.0 -- profile of SSRAA STU1.1 and OAuth 2.0 (UNOFFICIAL)",
+  "description": "Effective March 8, 2026 (RCE file name still says 'Draft'). For IAS this SOP applies via IAS SOP v3.0 §4.2(b); its SSRAA deadlines (§6.2: Q1 2027 for all registration/authn/authz, QHIN capability by Nov 1 2026, new FHIR nodes after Jan 1 2027) are SUPERSEDED for TEFCA IAS FHIR Endpoints by IAS §4.6(a)(1.2) and (b)(2.3): July 1, 2027. Builds on urn:x-hl7-udap-security:1.1.0:schema. Custom annotation keywords: x-precedence, one of: inherited (a base rule applying unchanged, e.g. QTF via IAS §4.2(a) or Facilitated FHIR/SSRAA via IAS §4.2(b)); profile-tightened (a compatible narrowing of a base rule; satisfying the profile satisfies both); explicit-override (a source text expressly replaces a base rule); superseded (an explicitly replaced deadline); unresolved-conflict (incompatible texts with no override; needs governing-priority interpretation or RCE clarification). Requirements are cumulative where compatible; genuine conflicts are never resolved by picking the apparently stricter rule. x-obligation (REQUIRED, MUST, SHALL, CONDITIONAL, MUST-IF-VERIFIED, MUST-ONE-OF, SHOULD, RECOMMENDED, MAY, OPTIONAL) and x-source (spec section). Draft 2020-12 validators collect unknown keywords as annotations; Ajv strict mode needs ajv.addKeyword() for each, or strict:false. x-not-expressible lists rules of that definition no JSON Schema can enforce.",
+  "$defs": {
+    "xpCode": {
+      "type": "string",
+      "pattern": "^(urn:oid:2\\.16\\.840\\.1\\.113883\\.3\\.7204\\.1\\.5\\.2\\.1#)?T-[A-Z0-9-]+$"
+    },
+    "jwtHeader": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/jwtHeader"
+        }
+      ],
+      "x-precedence": "profile-tightened (FF requires leaf + intermediate)",
+      "properties": {
+        "x5c": {
+          "minItems": 2,
+          "x-obligation": "SHALL",
+          "x-source": "FF SOP v2.0 §6.1(3)(c)(i)",
+          "description": "Leaf certificate followed by the intermediate that issued it."
+        }
+      }
+    },
+    "jwtHeaderRecommended": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/jwtHeaderRecommended"
+        }
+      ],
+      "properties": {
+        "alg": {
+          "enum": [
+            "RS256",
+            "ES256",
+            "ES384",
+            "RS384"
+          ],
+          "x-obligation": "SHOULD",
+          "x-source": "FF SOP v2.0 §6.10(4)",
+          "description": "All MUST support RS256 and SHOULD support ES256, ES384, RS384."
+        }
+      }
+    },
+    "b2bExtension": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/b2bExtension"
+        }
+      ],
+      "x-precedence": "profile-tightened (organization_name, purpose_of_use); see organization_id",
+      "required": [
+        "organization_id",
+        "organization_name",
+        "purpose_of_use"
+      ],
+      "properties": {
+        "organization_id": {
+          "pattern": "^Organization/[^/\\s]+$",
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 2",
+          "description": "FF requires the most granular RCE Directory Organization id as a relative reference, e.g. 'Organization/1.2.3'. SSRAA STU1.1 §5.2.1.1 says the value SHALL be a URI; a relative reference has no scheme. Open RCE/HL7 clarification.",
+          "x-precedence": "unresolved-conflict (FF Table 2 relative reference vs SSRAA §5.2.1.1 URI); the explicit FF form is what this profile encodes"
+        },
+        "organization_name": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 2",
+          "description": "Required here although optional in SSRAA."
+        },
+        "subject_id": {
+          "x-obligation": "CONDITIONAL",
+          "x-source": "FF SOP v2.0 Table 2",
+          "description": "MUST be present when applicable."
+        },
+        "purpose_of_use": {
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/xpCode"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 2, §6.4",
+          "description": "Length-1 array; code from the XP code system."
+        }
+      }
+    },
+    "tefcaIasExtension": {
+      "type": "object",
+      "required": [
+        "version",
+        "user_information",
+        "patient_information",
+        "id_token"
+      ],
+      "x-precedence": "inherited via IAS §4.2(b); id_token content profile-tightened by IAS SOP §4.9",
+      "x-not-expressible": [
+        "patient_information corresponds to the verified identity attributes of the user (§6.11 IAS(4))",
+        "user_information.relationship = ONESELF only when the user really is the patient"
+      ],
+      "properties": {
+        "version": {
+          "const": "1",
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 4"
+        },
+        "user_information": {
+          "type": "object",
+          "required": [
+            "resourceType"
+          ],
+          "properties": {
+            "resourceType": {
+              "const": "RelatedPerson"
+            }
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 4",
+          "description": "FHIR RelatedPerson; relationship ONESELF when the user is the patient."
+        },
+        "patient_information": {
+          "type": "object",
+          "required": [
+            "resourceType"
+          ],
+          "properties": {
+            "resourceType": {
+              "const": "Patient"
+            }
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 4",
+          "description": "FHIR US Core Patient with all known demographics."
+        },
+        "id_token": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+          "x-obligation": "REQUIRED",
+          "x-source": "FF SOP v2.0 Table 4",
+          "description": "CSP OIDC token as defined by the IAS SOP; server SHOULD answer invalid_grant if missing."
+        },
+        "consent_policy": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^urn:oid:\\S+$"
+          },
+          "x-obligation": "CONDITIONAL",
+          "x-source": "FF SOP v2.0 Table 4",
+          "description": "Required when the user is not the patient."
+        },
+        "consent_reference": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^https?://\\S+$"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "FF SOP v2.0 Table 4"
+        }
+      },
+      "if": {
+        "properties": {
+          "user_information": {
+            "properties": {
+              "relationship": {
+                "contains": {
+                  "properties": {
+                    "coding": {
+                      "contains": {
+                        "properties": {
+                          "code": {
+                            "const": "ONESELF"
+                          }
+                        },
+                        "required": [
+                          "code"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "coding"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "relationship"
+            ]
+          }
+        },
+        "required": [
+          "user_information"
+        ]
+      },
+      "else": {
+        "required": [
+          "consent_policy"
+        ]
+      }
+    },
+    "authenticationJwtClaims": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/authenticationJwtClaims"
+        }
+      ],
+      "x-precedence": "inherited via IAS §4.2(b)"
+    },
+    "clientCredentialsAssertion": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/authenticationJwtClaims"
+        }
+      ],
+      "required": [
+        "extensions"
+      ],
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "required": [
+            "hl7-b2b"
+          ],
+          "properties": {
+            "hl7-b2b": {
+              "$ref": "#/$defs/b2bExtension"
+            }
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11 B2B(1)"
+        }
+      }
+    },
+    "certificationJwtClaims": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/certificationJwtClaims"
+        }
+      ],
+      "x-precedence": "profile-tightened (TEFCA Basic App fields layered on the UDAP certification base claims)",
+      "type": "object",
+      "required": [
+        "certification_name",
+        "certification_uris",
+        "exchange_purposes",
+        "home_community_id"
+      ],
+      "x-source": "FF SOP v2.0 §6.11(6); URI from §6.11(2)-(3) (the table rendering wraps it as 'basicapp-certification ')",
+      "properties": {
+        "certification_name": {
+          "const": "TEFCA Basic App Certification",
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(6)"
+        },
+        "certification_uris": {
+          "const": [
+            "https://rce.sequoiaproject.org/udap/profiles/basic-app-certification"
+          ],
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(6)"
+        },
+        "exchange_purposes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/xpCode"
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(4),(6)",
+          "description": "One client registration per Exchange Purpose."
+        },
+        "home_community_id": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(6)"
+        }
+      }
+    },
+    "softwareStatementClaims": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/softwareStatementClaims"
+        }
+      ],
+      "x-not-expressible": [
+        "iss equals a SAN URI of the Facilitated FHIR certificate (§6.11(5))",
+        "that SAN URI path contains the Exchange Purpose (§6.11(5)(a))"
+      ]
+    },
+    "registrationRequest": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/registrationRequest"
+        }
+      ],
+      "required": [
+        "certifications"
+      ],
+      "properties": {
+        "certifications": {
+          "minItems": 1,
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(3)",
+          "description": "The basic-app certification is required for all TEFCA registrations."
+        }
+      }
+    },
+    "udapMetadata": {
+      "allOf": [
+        {
+          "$ref": "urn:x-hl7-udap-security:1.1.0:schema#/$defs/udapMetadata"
+        }
+      ],
+      "required": [
+        "scopes_supported",
+        "udap_certifications_required"
+      ],
+      "x-not-expressible": [
+        "metadata served for ?community=urn:oid:2.16.840.1.113883.3.7204.1.5 (§6.11(1))",
+        "scopes_supported lists all supported wildcard scopes (§6.12(1))"
+      ],
+      "properties": {
+        "udap_certifications_supported": {
+          "contains": {
+            "const": "https://rce.sequoiaproject.org/udap/profiles/basic-app-certification"
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(2)"
+        },
+        "udap_certifications_required": {
+          "contains": {
+            "const": "https://rce.sequoiaproject.org/udap/profiles/basic-app-certification"
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11(3)"
+        },
+        "scopes_supported": {
+          "type": "array",
+          "x-obligation": "SHALL",
+          "x-source": "FF SOP v2.0 §6.12(1)"
+        }
+      }
+    },
+    "udapMetadataIasResponder": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/udapMetadata"
+        }
+      ],
+      "properties": {
+        "grant_types_supported": {
+          "contains": {
+            "const": "authorization_code"
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11 IAS(1)"
+        },
+        "udap_authorization_extensions_supported": {
+          "contains": {
+            "const": "tefca_ias"
+          },
+          "x-obligation": "MUST",
+          "x-source": "FF SOP v2.0 §6.11 IAS(2)"
+        }
+      }
+    },
+    "tokenResponse": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/tokenResponse"
+        }
+      ],
+      "x-precedence": "inherited via IAS §4.2(b)"
+    },
+    "tokenResponseRecommended": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/tokenResponseRecommended"
+        }
+      ],
+      "properties": {
+        "expires_in": {
+          "maximum": 3600,
+          "x-obligation": "SHOULD",
+          "x-source": "FF SOP v2.0 §6.10(2)",
+          "description": "FF §6.10(2) SHOULD. Separately, SSRAA §5.2.2 makes <= 60 min a SHALL for any SSRAA transaction (protocol axis, see the SSRAA layer); TEFCA's obligation to support SSRAA on IAS endpoints is date-gated (adoption axis).",
+          "x-precedence": "inherited (FF SHOULD); SSRAA SHALL is compatible and applies to SSRAA transactions"
+        }
+      }
+    },
+    "tokenErrorResponse": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/tokenErrorResponse"
+        }
+      ],
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "properties": {
+            "hl7-b2b": {
+              "type": "object",
+              "required": [
+                "consent_required"
+              ],
+              "properties": {
+                "consent_required": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\S+:\\S+$"
+                  }
+                },
+                "consent_form": {
+                  "type": "string",
+                  "pattern": "^https?://\\S+$"
+                }
+              }
+            }
+          },
+          "x-obligation": "SHOULD",
+          "x-source": "FF SOP v2.0 §6.11 B2B(3) + TEFCA Authorization Extension Error Object table"
+        }
+      }
+    }
+  }
+}

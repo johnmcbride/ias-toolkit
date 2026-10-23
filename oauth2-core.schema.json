@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-oauth2:core:schema",
+  "title": "OAuth 2.0 core JSON artifacts (UNOFFICIAL, framework-neutral)",
+  "description": "Sources: RFC 6749 (OAuth 2.0: §4.1.3, §4.4.2 token requests, §5.1 token response, §5.2 error response), RFC 7521/7523 (JWT client assertions: §2.2 parameters, §3 claims), RFC 7591 (dynamic client registration: §2 metadata, §3.1.1 software statement, §3.2.1 response, §3.2.2 errors), RFC 7636 (PKCE §4.1 code_verifier). Form-encoded requests are represented as a JSON object of their parameters. *Recommended defs are deltas. Custom annotation keywords: x-precedence, one of: inherited (a base rule applying unchanged, e.g. QTF via IAS §4.2(a) or Facilitated FHIR/SSRAA via IAS §4.2(b)); profile-tightened (a compatible narrowing of a base rule; satisfying the profile satisfies both); explicit-override (a source text expressly replaces a base rule); superseded (an explicitly replaced deadline); unresolved-conflict (incompatible texts with no override; needs governing-priority interpretation or RCE clarification). Requirements are cumulative where compatible; genuine conflicts are never resolved by picking the apparently stricter rule. x-obligation (REQUIRED, MUST, SHALL, CONDITIONAL, MUST-IF-VERIFIED, MUST-ONE-OF, SHOULD, RECOMMENDED, MAY, OPTIONAL) and x-source (spec section). Draft 2020-12 validators collect unknown keywords as annotations; Ajv strict mode needs ajv.addKeyword() for each, or strict:false. x-not-expressible lists rules of that definition no JSON Schema can enforce.",
+  "$defs": {
+    "numericDate": {
+      "type": "number",
+      "minimum": 0,
+      "description": "RFC 7519 NumericDate (seconds)."
+    },
+    "jwt": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    },
+    "tokenRequest": {
+      "type": "object",
+      "required": [
+        "grant_type"
+      ],
+      "properties": {
+        "grant_type": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 6749 §4.1.3 / §4.4.2"
+        },
+        "code": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 6749 §4.1.3",
+          "description": "REQUIRED for authorization_code."
+        },
+        "redirect_uri": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 6749 §4.1.3",
+          "description": "REQUIRED if it was included in the authorization request; values identical."
+        },
+        "scope": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 6749 §4.4.2 / §3.3"
+        },
+        "code_verifier": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._~-]{43,128}$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7636 §4.1/§4.5"
+        },
+        "client_assertion_type": {
+          "const": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7523 §2.2"
+        },
+        "client_assertion": {
+          "$ref": "#/$defs/jwt",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 7523 §2.2"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "grant_type": {
+                "const": "authorization_code"
+              }
+            },
+            "required": [
+              "grant_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "client_assertion"
+            ]
+          },
+          "then": {
+            "required": [
+              "client_assertion_type"
+            ]
+          }
+        }
+      ]
+    },
+    "tokenResponse": {
+      "type": "object",
+      "required": [
+        "access_token",
+        "token_type"
+      ],
+      "x-not-expressible": [
+        "scope REQUIRED when the granted scope differs from the requested scope (RFC 6749 §5.1)"
+      ],
+      "properties": {
+        "access_token": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 6749 §5.1"
+        },
+        "token_type": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 6749 §5.1 / §7.1"
+        },
+        "expires_in": {
+          "type": "integer",
+          "minimum": 0,
+          "x-obligation": "RECOMMENDED",
+          "x-source": "RFC 6749 §5.1",
+          "description": "Lifetime in seconds of the access token."
+        },
+        "refresh_token": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 6749 §5.1"
+        },
+        "scope": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "RFC 6749 §5.1"
+        }
+      }
+    },
+    "tokenResponseRecommended": {
+      "description": "DELTA: RECOMMENDED items.",
+      "x-obligation": "RECOMMENDED",
+      "x-source": "RFC 6749 §5.1",
+      "required": [
+        "expires_in"
+      ]
+    },
+    "tokenErrorResponse": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "pattern": "^[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]+$",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 6749 §5.2",
+          "description": "invalid_request, invalid_client, invalid_grant, unauthorized_client, unsupported_grant_type, invalid_scope, or a registered extension code (§8.5)."
+        },
+        "error_description": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 6749 §5.2"
+        },
+        "error_uri": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 6749 §5.2"
+        }
+      }
+    },
+    "clientAssertionClaims": {
+      "type": "object",
+      "required": [
+        "iss",
+        "sub",
+        "aud",
+        "exp"
+      ],
+      "properties": {
+        "iss": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7523 §3"
+        },
+        "sub": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7523 §3"
+        },
+        "aud": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7523 §3"
+        },
+        "exp": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7523 §3"
+        },
+        "nbf": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7523 §3"
+        },
+        "iat": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7523 §3"
+        },
+        "jti": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7523 §3"
+        }
+      }
+    },
+    "clientRegistrationRequest": {
+      "type": "object",
+      "properties": {
+        "redirect_uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "token_endpoint_auth_method": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "grant_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "response_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "client_name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "logo_uri": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "scope": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "contacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2"
+        },
+        "software_statement": {
+          "$ref": "#/$defs/jwt",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §2.3 / §3.1.1"
+        }
+      }
+    },
+    "clientRegistrationResponse": {
+      "type": "object",
+      "required": [
+        "client_id"
+      ],
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7591 §3.2.1"
+        },
+        "client_secret": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §3.2.1"
+        },
+        "client_id_issued_at": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §3.2.1"
+        }
+      }
+    },
+    "registrationErrorResponse": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "RFC 7591 §3.2.2",
+          "description": "invalid_redirect_uri, invalid_client_metadata, invalid_software_statement, unapproved_software_statement (or an extension)."
+        },
+        "error_description": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "RFC 7591 §3.2.2"
+        }
+      }
+    }
+  }
+}

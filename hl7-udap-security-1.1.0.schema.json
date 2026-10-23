@@ -1,0 +1,837 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-hl7-udap-security:1.1.0:schema",
+  "title": "HL7 FHIR US Security for Scalable Registration, Authentication, and Authorization (SSRAA, UDAP) v1.1.0 STU1.1 -- JSON artifacts (UNOFFICIAL, not TEFCA-specific)",
+  "description": "Version pinned by the TEFCA Facilitated FHIR SOP v2.0 (https://hl7.org/fhir/us/udap-security/STU1.1/). STU2 (v2.0.0) is now the current HL7 publication and differs (e.g. PKCE). Sections: §1.2 JWT requirements (index.html), §2 discovery, §3 registration, §5 B2B. Builds on urn:x-oauth2:core:schema. Custom annotation keywords: x-precedence, one of: inherited (a base rule applying unchanged, e.g. QTF via IAS §4.2(a) or Facilitated FHIR/SSRAA via IAS §4.2(b)); profile-tightened (a compatible narrowing of a base rule; satisfying the profile satisfies both); explicit-override (a source text expressly replaces a base rule); superseded (an explicitly replaced deadline); unresolved-conflict (incompatible texts with no override; needs governing-priority interpretation or RCE clarification). Requirements are cumulative where compatible; genuine conflicts are never resolved by picking the apparently stricter rule. x-obligation (REQUIRED, MUST, SHALL, CONDITIONAL, MUST-IF-VERIFIED, MUST-ONE-OF, SHOULD, RECOMMENDED, MAY, OPTIONAL) and x-source (spec section). Draft 2020-12 validators collect unknown keywords as annotations; Ajv strict mode needs ajv.addKeyword() for each, or strict:false. x-not-expressible lists rules of that definition no JSON Schema can enforce.",
+  "$defs": {
+    "numericDate": {
+      "type": "number",
+      "minimum": 0,
+      "description": "RFC 7519 NumericDate (seconds)."
+    },
+    "jwt": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    },
+    "jwtHeader": {
+      "type": "object",
+      "required": [
+        "alg",
+        "x5c"
+      ],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §1.2.3",
+          "description": "Implementers SHALL support RS256, SHOULD support ES256, MAY support RS384/ES384 (§1.2.2)."
+        },
+        "x5c": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §1.2.3",
+          "description": "Leaf certificate first; standard base64 DER."
+        }
+      }
+    },
+    "jwtHeaderRecommended": {
+      "description": "DELTA",
+      "properties": {
+        "alg": {
+          "enum": [
+            "RS256",
+            "ES256",
+            "RS384",
+            "ES384"
+          ],
+          "x-obligation": "RECOMMENDED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §1.2.2",
+          "description": "Algorithms named by SSRAA; others are not interoperable."
+        }
+      }
+    },
+    "udapMetadata": {
+      "type": "object",
+      "required": [
+        "udap_versions_supported",
+        "udap_profiles_supported",
+        "udap_authorization_extensions_supported",
+        "udap_certifications_supported",
+        "grant_types_supported",
+        "token_endpoint",
+        "token_endpoint_auth_methods_supported",
+        "token_endpoint_auth_signing_alg_values_supported",
+        "registration_endpoint",
+        "signed_metadata"
+      ],
+      "x-not-expressible": [
+        "signed_metadata signature, iss == {baseURL} == a SAN URI of the x5c leaf (§2.3)",
+        "empty arrays mean the capability is NOT supported (§2.2)"
+      ],
+      "properties": {
+        "udap_versions_supported": {
+          "const": [
+            "1"
+          ],
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "udap_profiles_supported": {
+          "type": "array",
+          "minItems": 2,
+          "allOf": [
+            {
+              "contains": {
+                "const": "udap_dcr"
+              }
+            },
+            {
+              "contains": {
+                "const": "udap_authn"
+              }
+            }
+          ],
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "udap_authorization_extensions_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "udap_authorization_extensions_required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "udap_certifications_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "udap_certifications_required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "grant_types_supported": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "authorization_code",
+              "refresh_token",
+              "client_credentials"
+            ]
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "scopes_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "authorization_endpoint": {
+          "type": "string",
+          "pattern": "^https://\\S+$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "token_endpoint": {
+          "type": "string",
+          "pattern": "^https://\\S+$",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "token_endpoint_auth_methods_supported": {
+          "const": [
+            "private_key_jwt"
+          ],
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "token_endpoint_auth_signing_alg_values_supported": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "registration_endpoint": {
+          "type": "string",
+          "pattern": "^https://\\S+$",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "registration_endpoint_jwt_signing_alg_values_supported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "RECOMMENDED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2"
+        },
+        "signed_metadata": {
+          "$ref": "#/$defs/jwt",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "udap_authorization_extensions_supported": {
+                "minItems": 1
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "udap_authorization_extensions_required"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "udap_certifications_supported": {
+                "minItems": 1
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "udap_certifications_required"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "grant_types_supported": {
+                "contains": {
+                  "const": "client_credentials"
+                }
+              }
+            },
+            "required": [
+              "grant_types_supported"
+            ]
+          },
+          "then": {
+            "properties": {
+              "udap_profiles_supported": {
+                "contains": {
+                  "const": "udap_authz"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "grant_types_supported": {
+                "contains": {
+                  "const": "authorization_code"
+                }
+              }
+            },
+            "required": [
+              "grant_types_supported"
+            ]
+          },
+          "then": {
+            "required": [
+              "authorization_endpoint"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "grant_types_supported": {
+                "contains": {
+                  "const": "refresh_token"
+                }
+              }
+            },
+            "required": [
+              "grant_types_supported"
+            ]
+          },
+          "then": {
+            "properties": {
+              "grant_types_supported": {
+                "contains": {
+                  "const": "authorization_code"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "udapMetadataRecommended": {
+      "description": "DELTA",
+      "x-obligation": "RECOMMENDED",
+      "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.2",
+      "required": [
+        "registration_endpoint_jwt_signing_alg_values_supported"
+      ]
+    },
+    "signedMetadataClaims": {
+      "type": "object",
+      "required": [
+        "iss",
+        "sub",
+        "exp",
+        "iat",
+        "jti",
+        "token_endpoint",
+        "registration_endpoint"
+      ],
+      "x-not-expressible": [
+        "iss == {baseURL} and == a SAN URI of the x5c leaf",
+        "sub == iss",
+        "exp <= iat + 1 year",
+        "signed with RS256",
+        "authorization_endpoint present if present in the unsigned metadata"
+      ],
+      "properties": {
+        "iss": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        },
+        "sub": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        },
+        "exp": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        },
+        "iat": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        },
+        "jti": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        },
+        "token_endpoint": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        },
+        "registration_endpoint": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §2.3"
+        }
+      }
+    },
+    "softwareStatementClaims": {
+      "type": "object",
+      "required": [
+        "iss",
+        "sub",
+        "aud",
+        "exp",
+        "iat",
+        "jti",
+        "client_name",
+        "contacts",
+        "grant_types",
+        "token_endpoint_auth_method",
+        "scope"
+      ],
+      "x-not-expressible": [
+        "iss matches a uniformResourceIdentifier SAN of the x5c leaf certificate (§3.1)",
+        "sub == iss",
+        "aud == the registration endpoint",
+        "exp <= iat + 300 s",
+        "signature with x5c key"
+      ],
+      "properties": {
+        "iss": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "sub": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "aud": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "exp": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "iat": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "jti": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "client_name": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "redirect_uris": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^https://\\S+$"
+          },
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "contacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "contains": {
+            "type": "string",
+            "pattern": "^mailto:\\S+@\\S+$"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "logo_uri": {
+          "type": "string",
+          "pattern": "^https://\\S+\\.(png|PNG|jpg|JPG|jpeg|JPEG|gif|GIF)$",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "grant_types": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "authorization_code",
+              "refresh_token",
+              "client_credentials"
+            ]
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "response_types": {
+          "const": [
+            "code"
+          ],
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "token_endpoint_auth_method": {
+          "const": "private_key_jwt",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "scope": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "grant_types": {
+                "contains": {
+                  "const": "authorization_code"
+                }
+              }
+            },
+            "required": [
+              "grant_types"
+            ]
+          },
+          "then": {
+            "required": [
+              "redirect_uris",
+              "response_types",
+              "logo_uri"
+            ],
+            "properties": {
+              "grant_types": {
+                "not": {
+                  "contains": {
+                    "const": "client_credentials"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "redirect_uris"
+                  ]
+                },
+                {
+                  "required": [
+                    "response_types"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "grant_types": {
+                "not": {
+                  "contains": {
+                    "const": "refresh_token"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "certificationJwtClaims": {
+      "type": "object",
+      "required": [
+        "iss",
+        "sub",
+        "exp",
+        "iat",
+        "jti"
+      ],
+      "x-source": "UDAP Certifications and Endorsements for Client Applications STU1 (referenced by SSRAA §3.3); iss/exp/jti also required for every SSRAA JWT (§1.2.4). The udap.org page could not be retrieved directly when this layer was built; sub and iat requirements are taken from that profile as reported by reviewers and UDAP authors -- verify against udap.org.",
+      "x-not-expressible": [
+        "sub matches a uniformResourceIdentifier SAN of the client certificate it certifies",
+        "signature verifies with the x5c leaf key",
+        "not expired at registration time"
+      ],
+      "properties": {
+        "iss": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "UDAP C&E STU1; SSRAA §1.2.4",
+          "description": "Certifier URI; equals sub for a self-signed certification."
+        },
+        "sub": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "UDAP C&E STU1",
+          "description": "Client URI (a SAN URI of the client certificate)."
+        },
+        "aud": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "UDAP C&E STU1"
+        },
+        "exp": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "UDAP C&E STU1; SSRAA §1.2.4"
+        },
+        "iat": {
+          "$ref": "#/$defs/numericDate",
+          "x-obligation": "REQUIRED",
+          "x-source": "UDAP C&E STU1"
+        },
+        "jti": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "UDAP C&E STU1; SSRAA §1.2.4"
+        },
+        "certification_name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "UDAP C&E STU1"
+        },
+        "certification_uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "UDAP C&E STU1"
+        }
+      }
+    },
+    "registrationRequest": {
+      "type": "object",
+      "required": [
+        "software_statement",
+        "udap"
+      ],
+      "properties": {
+        "software_statement": {
+          "$ref": "#/$defs/jwt",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1"
+        },
+        "certifications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jwt"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.3"
+        },
+        "udap": {
+          "const": "1",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §3.1 example / UDAP DCR"
+        }
+      }
+    },
+    "authenticationJwtClaims": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/clientAssertionClaims"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "iss",
+        "sub",
+        "aud",
+        "exp",
+        "iat",
+        "jti"
+      ],
+      "x-not-expressible": [
+        "iss == sub == client_id",
+        "aud == token endpoint URL",
+        "exp - iat <= 300 s",
+        "extensions.hl7-b2b required for client_credentials and omitted for authorization_code"
+      ],
+      "properties": {
+        "iss": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        },
+        "sub": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        },
+        "aud": {
+          "type": "string",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        },
+        "exp": {
+          "type": "integer",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        },
+        "iat": {
+          "type": "integer",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        },
+        "jti": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        },
+        "extensions": {
+          "type": "object",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1"
+        }
+      }
+    },
+    "b2bExtension": {
+      "type": "object",
+      "required": [
+        "version",
+        "organization_id",
+        "purpose_of_use"
+      ],
+      "dependentRequired": {
+        "consent_reference": [
+          "consent_policy"
+        ]
+      },
+      "properties": {
+        "version": {
+          "const": "1",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        },
+        "subject_name": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        },
+        "subject_id": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1",
+          "description": "US Realm: the individual NPI; omit for requestors without one."
+        },
+        "subject_role": {
+          "type": "string",
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        },
+        "organization_name": {
+          "type": "string",
+          "x-obligation": "OPTIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        },
+        "organization_id": {
+          "type": "string",
+          "minLength": 1,
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1",
+          "description": "SHALL be a URI; trust communities define allowed schemes."
+        },
+        "purpose_of_use": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        },
+        "consent_policy": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "x-obligation": "OPTIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        },
+        "consent_reference": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^https?://\\S+$"
+          },
+          "x-obligation": "CONDITIONAL",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.1.1"
+        }
+      }
+    },
+    "tokenRequestClientCredentials": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/tokenRequest"
+        }
+      ],
+      "required": [
+        "grant_type",
+        "client_assertion_type",
+        "client_assertion",
+        "udap"
+      ],
+      "properties": {
+        "grant_type": {
+          "const": "client_credentials",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.2"
+        },
+        "udap": {
+          "const": "1",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.2"
+        }
+      }
+    },
+    "tokenRequestAuthorizationCode": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/tokenRequest"
+        }
+      ],
+      "required": [
+        "grant_type",
+        "code",
+        "client_assertion_type",
+        "client_assertion",
+        "udap"
+      ],
+      "properties": {
+        "grant_type": {
+          "const": "authorization_code",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.2"
+        },
+        "udap": {
+          "const": "1",
+          "x-obligation": "REQUIRED",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.2"
+        }
+      }
+    },
+    "tokenResponse": {
+      "allOf": [
+        {
+          "$ref": "urn:x-oauth2:core:schema#/$defs/tokenResponse"
+        }
+      ],
+      "properties": {
+        "expires_in": {
+          "maximum": 3600,
+          "x-obligation": "MUST",
+          "x-source": "HL7 SSRAA STU1.1 (v1.1.0) §5.2.2",
+          "description": "Servers SHALL issue access tokens with lifetime <= 60 minutes."
+        }
+      }
+    }
+  }
+}

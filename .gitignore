@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+practice/
+ias_fixtures/
+captures/
+*.jwt
+report*.json
+report*.txt
+obligations.csv

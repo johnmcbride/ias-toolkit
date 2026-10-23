@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-tefca-qhin-bulletin-2:1.0:schema",
+  "title": "TEFCA QHIN Compliance Bulletin No. 2 v1.0 -- IAL2 Claims Token layer for IAS SOP v3.0 (UNOFFICIAL)",
+  "description": "Unofficial encoding of TEFCA QHIN Compliance Bulletin No. 2, 'Interim Technical Direction on IAS Claims Token Verification in TEFCA', Version 1.0 (Issue Date October 13, 2026; header Effective Date October 26, 2026). The Bulletin's introduction says that effective October 13, 2026 QHINs must process IAS Claims Tokens under its direction, and that a QHIN not compliant as of 5:00 pm ET, October 26, 2026 may face consequences. It is in effect until further notice. Bulletin §1(b): where IAS SOP v3.0 is ambiguous it SHALL be interpreted consistently with the Bulletin, and where the Bulletin conflicts with the SOP the Bulletin takes precedence. This layer therefore replaces urn:x-tefca-ias-sop:3.0:schema#/$defs/idTokenClaims (the SOP-text reading). It reuses idTokenClaimsCore, address and oidUrn from the SOP layer and sets four things: tefca_ial2claims_version '3.0' (§2(a)); the email/phone verification rules (§3); historical_address as an object or an array of objects (§4); aud as a string or a one-element array (§5). Load with oidc-core-1.0.schema.json, tefca-ias-sop-v3.schema.json and tefca-ias-sop-v3.recommended.schema.json. Custom annotations as in the SOP layer (x-obligation, x-source, x-precedence, x-not-expressible); x-field names the member a cross-field rule is reported against ('<root>' for a rule about the whole token).",
+  "$ref": "#/$defs/idTokenClaims",
+  "$defs": {
+    "aud": {
+      "if": {
+        "type": "array"
+      },
+      "then": {
+        "minItems": 1,
+        "maxItems": 1,
+        "items": {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/oidUrn"
+        }
+      },
+      "else": {
+        "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/oidUrn"
+      },
+      "x-obligation": "SHALL",
+      "x-source": "QHIN Compliance Bulletin No. 2 §5(a)-(c); IAS SOP v3.0 Table 2 + footnote 13",
+      "description": "A string, or an array containing exactly one string (§5(a)). In either case the string is the unique HCID of the IAS Provider's Directory Entry that is the intended recipient of the token, as a URI per RFC 3061 (§5(b)): urn:oid:<oid>. The recipient SHALL treat the two forms as equivalent (§5(c)).",
+      "x-precedence": "explicit-override (Bulletin §1(b), §5(a): the one-element array form is accepted where the SOP-text reading of IAS Table 2 allowed one string only)"
+    },
+    "historicalAddress": {
+      "if": {
+        "type": "array"
+      },
+      "then": {
+        "minItems": 1,
+        "items": {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/address"
+        }
+      },
+      "else": {
+        "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/address"
+      },
+      "x-obligation": "SHALL (when present)",
+      "x-source": "QHIN Compliance Bulletin No. 2 §4(a)-(b); IAS SOP v3.0 Table 2, Table 3",
+      "description": "When present: an Address object, or an array containing one or more elements, each an Address object (§4(a)). Each Address object SHALL comply with Table 3 of IAS SOP v3.0 (§4(b)).",
+      "x-precedence": "explicit-override (Bulletin §1(b), §4(a): arrays are accepted where the SOP-text reading of 'same format as for address' allowed one object only)"
+    },
+    "verifiedContact": {
+      "x-field": "<root>",
+      "x-obligation": "SHALL",
+      "x-source": "QHIN Compliance Bulletin No. 2 §3(a)-(f)",
+      "description": "At least one of email and phone_number SHALL be present with a verified value (§3(a)). A claim counts as verified unless its *_verified flag is false: an absent flag means verified (§3(e)-(f)). An unverified email (email_verified false) is allowed only with a verified phone_number (§3(b)), an unverified phone_number only with a verified email (§3(c)), and never both unverified (§3(d)). Together these reduce to: at least one of email and phone_number is present and not flagged false.",
+      "anyOf": [
+        {
+          "required": [
+            "email"
+          ],
+          "properties": {
+            "email": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "email_verified": {
+              "const": true
+            }
+          }
+        },
+        {
+          "required": [
+            "phone_number"
+          ],
+          "properties": {
+            "phone_number": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "phone_number_verified": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "idTokenClaims": {
+      "description": "IAL2 Claims Token claims under IAS SOP v3.0 as directed by QHIN Compliance Bulletin No. 2. ias_sop_checker applies it from 2026-10-13 (--bulletin2 auto) or with --bulletin2 on.",
+      "allOf": [
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/idTokenClaimsCore"
+        },
+        {
+          "$ref": "#/$defs/verifiedContact"
+        }
+      ],
+      "properties": {
+        "aud": {
+          "$ref": "#/$defs/aud"
+        },
+        "historical_address": {
+          "$ref": "#/$defs/historicalAddress"
+        },
+        "email_verified": {
+          "type": "boolean",
+          "x-obligation": "MAY",
+          "x-source": "QHIN Compliance Bulletin No. 2 §3(b), §3(f); OIDC Core §5.1",
+          "description": "true; or false only under the temporary §3(b) permission, which needs a verified phone_number. Absent: the email address SHALL be treated as verified (§3(f))."
+        },
+        "phone_number_verified": {
+          "type": "boolean",
+          "x-obligation": "MAY",
+          "x-source": "QHIN Compliance Bulletin No. 2 §3(c), §3(e); OIDC Core §5.1",
+          "description": "true; or false only under the temporary §3(c) permission, which needs a verified email. Absent: the phone number SHALL be treated as verified (§3(e))."
+        },
+        "tefca_ial2claims_version": {
+          "const": "3.0",
+          "x-obligation": "SHALL",
+          "x-source": "QHIN Compliance Bulletin No. 2 §2(a)",
+          "description": "Every IAL2 Claims Token issued based on the IAS SOP v3.0 SHALL include the tefca_ial2claims_version claim with the string value “3.0” (§2(a)). Required through idTokenClaimsCore."
+        }
+      },
+      "x-not-expressible": [
+        "§3(g): the §3(b)/(c) permissions are temporary; after the RCE gives notice, no unverified claims (IAS SOP §4.9(a)(iii)) -- ias_sop_checker --b2-3g-notice DATE",
+        "§3(a): the phone number or email address was verified per IAS SOP §4.3 (the token shows only the flag)",
+        "§5(b): aud is the HCID of the IAS Provider that is the intended recipient (--expected-aud)",
+        "§5(c): recipients treat a string aud and a one-element array aud as equivalent",
+        "Bulletin introduction: QHINs process IAS Claims Tokens under the Bulletin from October 13, 2026 and are compliant by 5:00 pm ET, October 26, 2026"
+      ]
+    },
+    "idTokenClaimsStrict": {
+      "$ref": "#/$defs/idTokenClaims",
+      "unevaluatedProperties": false,
+      "description": "Rejects claims not defined by OIDC, named by the SOP, or RCE-namespaced."
+    },
+    "idTokenClaimsRecommended": {
+      "description": "Bulletin 2 reading + generic OIDC RECOMMENDED + TEFCA SHOULD items.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/idTokenClaims"
+        },
+        {
+          "$ref": "urn:x-oidc:core-1.0:schema#/$defs/idTokenClaimsRecommended"
+        },
+        {
+          "$ref": "urn:x-tefca-ias-sop:3.0:recommended#/$defs/idTokenClaimsDelta"
+        }
+      ]
+    },
+    "decodedIdToken": {
+      "type": "object",
+      "required": [
+        "header",
+        "payload"
+      ],
+      "properties": {
+        "header": {
+          "$ref": "urn:x-tefca-ias-sop:3.0:schema#/$defs/idTokenHeader"
+        },
+        "payload": {
+          "$ref": "#/$defs/idTokenClaims"
+        }
+      }
+    }
+  }
+}
