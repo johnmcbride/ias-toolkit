@@ -55,6 +55,52 @@ QHIN COMPLIANCE BULLETIN No. 2 (v1.5.0)
            equivalent (§5(c)).
   Schema layer: tefca-qhin-bulletin-2.schema.json replaces the SOP-text idTokenClaims.
 
+XCPD GENDER CODE (v1.6.5)
+  livingSubjectAdministrativeGender must use an HL7 AdministrativeGender code
+  (2.16.840.1.113883.5.1): F, M or UN. A spelled-out value such as 'MALE' is a WARN
+  (pd.gender.code), like the other XCPD body format checks (pd.birthTime, pd.telecom). For the
+  comparison with the token, 'MALE' / 'FEMALE' (any case) are read as M / F, so a token 'male'
+  and a body 'MALE' are not reported as a mismatch.
+
+CAPTURE TOLERANCE (v1.6.4)
+  A capture with more than one XML declaration before the root element is not well-formed
+  (XML 1.0 §2.8 allows one, at the very start). The checker used to stop with xml.parse; it
+  now removes the extra declarations, reports a WARN (xml.decl) and checks the message. A
+  repeated declaration usually comes from the logging or capture tool, not the wire.
+  When the token sits in a mis-named SAML attribute, its NameFormat is now checked too
+  (saml.id_token.nameformat), so one run lists everything wrong with the attribute.
+  A token birthdate that is not a full YYYY-MM-DD date is no longer compared with the XCPD
+  body, the FHIR patient_information or an XCPD response: it already fails birthdate.format,
+  and a text comparison reported '1/15/11' and 20110115 as different when they are the same
+  day. The comparison is reported as INFO (pd.vs.token.birthdate, piv.birthdate).
+
+AUTH_TIME AGE (v1.6.3)
+  When the token carries auth_time, an INFO (auth_time.age) gives how long before iat the
+  End-User last authenticated at the CSP. Within 10 minutes (the authorization-code lifetime
+  RFC 6749 §4.1.2 recommends) it reads as a sign-in for this token; longer means the token was
+  issued from a refresh token or an existing CSP session, because OIDC Core §12.2 keeps the
+  original auth_time on a refreshed ID Token. Reported, not judged: the RCE IAS workgroup of
+  October 22, 2026 set no token or refresh-token lifetime. auth_time after iat is a WARN
+  (auth_time.order); a non-numeric auth_time is a FAIL (auth_time.type), as for iat and exp.
+
+GENDER CODES (v1.6.2)
+  The XCPD body-versus-token comparison maps the token gender to the HL7 AdministrativeGender
+  code: 'female' or 'F' -> F, 'male' or 'M' -> M (case-insensitive), anything else -> UN.
+  Before 1.6.2 a token value of 'F' or 'M' mapped to UN and was reported as a mismatch even
+  when the XCPD body carried the same code. A token gender that abbreviates or changes the
+  case of 'female' or 'male' is a WARN (gender.value): OIDC Core §5.1 defines those two values
+  and allows others only when neither applies, and §4.9(a) requires ID Tokens to conform to
+  OIDC Core.
+
+LENIENT BASE64 (v1.6.1)
+  A token part that is not base64url is still a FAIL (token.b64url; RFC 7515 §2, §7.1), but
+  when the part uses the standard-base64 alphabet ('+', '/') or '=' padding the checker now
+  decodes it and runs all other checks (it used to stop). The signature is tried over the
+  token as received and over its base64url form; sig.b64-source says which one verified,
+  i.e. whether the CSP signed the non-standard text or the token was converted after
+  signing. A token wrapped in quotation marks is unwrapped with a WARN (token.quoted).
+  Other characters still stop the token checks.
+
 RCE IAS WORKGROUP, OCTOBER 22, 2026 (v1.6.0)
   Slides "Claims Values", "Whose HCID in the aud Claim", "Token Lifetime", "Review of the
   Bulletin". Applied:
@@ -194,7 +240,7 @@ try:
 except ImportError:  # pragma: no cover
     HAVE_JSONSCHEMA = False
 
-VERSION = "1.6.0"
+VERSION = "1.6.5"
 SOP_NAME = "Exchange Purpose Implementation SOP: Individual Access Services (IAS) v3.0"
 B2_NAME = "TEFCA QHIN Compliance Bulletin No. 2 v1.0 (Interim Technical Direction on IAS Claims Token Verification)"
 # Issue Date; the introduction says "Effective October 13, 2026, QHINs must process IAS Claims Tokens under the
@@ -295,6 +341,15 @@ OID_URN_ANYCASE_RE = re.compile(r"^[uU][rR][nN]:[oO][iI][dD]:[0-2](\.(0|[1-9][0-
 BARE_OID_RE = re.compile(r"^[0-2](\.[0-9]+)+$")
 JWT_RE = re.compile(r"eyJ[A-Za-z0-9_-]{5,}\.eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*")
 B64URL_RE = re.compile(r"^[A-Za-z0-9_-]*$")
+# v1.6.1: what can still be decoded when a part is not base64url: standard-base64 '+' and '/' (either alphabet, even
+# mixed) with optional trailing '=' padding. Anything else (quotes inside, '%', '*', ...) cannot be decoded reliably.
+B64_LENIENT_RE = re.compile(r"^[A-Za-z0-9+/_-]*={0,2}$")
+JWS_PART = ("header", "payload", "signature")
+
+
+def b64url_canonical(seg: str) -> str:
+    """The base64url (RFC 7515 §2) spelling of a base64 or base64url string: '-' for '+', '_' for '/', no padding."""
+    return seg.replace("+", "-").replace("/", "_").rstrip("=")
 
 BASE_SCHEMA_ID = "urn:x-oidc:core-1.0:schema"
 PROFILE_SCHEMA_ID = "urn:x-tefca-ias-sop:3.0:schema"
@@ -359,6 +414,9 @@ BASIC_APP_CERT_NAME = "TEFCA Basic App Certification"                   # FF §6
 XP_CODE_SYSTEM_URN = "urn:oid:2.16.840.1.113883.3.7204.1.5.2.1"         # QTF-604, FF §6.4
 JWT_BEARER = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"   # RFC 7523 §2.2
 FF_ALGS = ("RS256", "ES256", "ES384", "RS384")                          # FF §6.10(4)
+# token gender -> HL7 AdministrativeGender code for the XCPD comparison (v1.6.2: one-letter codes too)
+GENDER_CODE = {"female": "F", "f": "F", "male": "M", "m": "M"}
+HL7_GENDER_CODES = ("F", "M", "UN")  # HL7 v3 AdministrativeGender, 2.16.840.1.113883.5.1
 # hand-written WARN checks that mirror the SHOULD/RECOMMENDED schema layer
 REC_CHECK_NAMES = {"tefca_ial2claims_version",
                    "email.format", "phone_number.e164", "discovery.recommended", "discovery.token_endpoint",
@@ -537,6 +595,17 @@ def urn_equivalent(a: str, b: str) -> bool:
 def short(s: Any, n: int = 120) -> str:
     s = str(s)
     return s if len(s) <= n else s[: n - 3] + "..."
+
+
+def span(seconds: float) -> str:
+    """Human duration: '45 s', '12 min', '6 d 21 h 51 min'."""
+    s = int(round(seconds))
+    if s < 60:
+        return f"{s} s"
+    d, rem = divmod(s, 86400)
+    h, rem = divmod(rem, 3600)
+    m = rem // 60
+    return " ".join(f"{n} {u}" for n, u in ((d, "d"), (h, "h"), (m, "min")) if n) or "0 min"
 
 
 def utc(ts: float) -> str:
@@ -1129,6 +1198,11 @@ class IasChecker:
                    fix="Relay only the compact JWS; 'Bearer' belongs in an Authorization header, not in "
                        "the SAML AttributeValue or tefca_ias.id_token.")
             t = t[7:].strip()
+        if len(t) > 2 and t[0] == t[-1] and t[0] in "\"'" and t.count(t[0]) == 2:
+            R.warn("4.9(e)", "token.quoted", f"Token value is wrapped in {t[0]} quotation marks.", artifact=art,
+                   why="A compact JWS has no quotation marks; they usually come from copying a JSON string value.",
+                   fix="Relay the bare token, without the surrounding quotation marks.")
+            t = t[1:-1].strip()
         if re.search(r"\s", t):
             R.warn("4.9(e)", "token.whitespace", "Token contains embedded whitespace / line breaks.",
                    artifact=art, why="A compact JWS contains no whitespace. Pretty-printers and XML "
@@ -1161,14 +1235,33 @@ class IasChecker:
                        fix="Confirm you are relaying the OIDC id_token (not the access_token, a "
                            "refresh token, or an opaque reference token).")
                 return None
+        lenient = []
         for i, seg in enumerate(parts):
-            if not B64URL_RE.match(seg):
-                bad = sorted(set(re.sub(r"[A-Za-z0-9_-]", "", seg)))
-                R.fail("4.9(a)", "token.b64url", f"Segment {i} is not base64url (found {''.join(bad)!r}).",
-                       artifact=art, why="RFC 7515 requires unpadded base64url ('-' and '_', no '=').",
-                       fix="Something converted the token to standard base64 or added padding. "
-                           "Relay the CSP's original string.")
+            if B64URL_RE.match(seg):
+                continue
+            bad = sorted(set(re.sub(r"[A-Za-z0-9_-]", "", seg)))
+            why = ("RFC 7515 §2 and §7.1: every part of a compact JWS is base64url ('-' and '_' in place of '+' and "
+                   "'/') with the trailing '=' padding omitted. A recipient that follows RFC 7515 rejects this token.")
+            if B64_LENIENT_RE.match(seg):
+                kinds = ([f"standard-base64 character(s) {''.join(c for c in bad if c in '+/')!r}"]
+                         if set(bad) & set("+/") else []) + (["'=' padding"] if seg.endswith("=") else [])
+                R.fail("4.9(a)", "token.b64url", f"Segment {i} ({JWS_PART[i]}) is not base64url: it contains "
+                       f"{' and '.join(kinds)}. Decoded leniently so that the other checks can still run.",
+                       artifact=art, why=why,
+                       fix="Relay the CSP's original string. The sig.* findings show whether the CSP signed this "
+                           "text itself or the token was converted after signing.")
+                lenient.append(JWS_PART[i])
+            else:
+                R.fail("4.9(a)", "token.b64url", f"Segment {i} ({JWS_PART[i]}) is not base64url and cannot be "
+                       f"decoded as base64 either (found {''.join(bad)!r}). No further token checks.",
+                       artifact=art, why=why, evidence=f"segment starts with {short(seg, 40)!r}",
+                       fix="Relay the CSP's original string; look for characters added by copying, URL-encoding "
+                           "or XML escaping.")
                 return None
+        if lenient:
+            R.info("4.9(a)", "token.b64.lenient", f"Continuing with the {', '.join(lenient)} decoded as standard "
+                   "base64 (padding allowed). Claim checks below use the decoded content; the signature is tried "
+                   "over the token as received and over its base64url form.", artifact=art)
         if parts[2] == "":
             R.fail("4.9(a)(ii)", "token.unsigned", "Token has an empty signature segment (unsigned).",
                    artifact=art, fix="Only RS256-signed tokens are acceptable.")
@@ -1330,6 +1423,26 @@ class IasChecker:
                 R.ok(t2, "exp.valid", f"not expired (exp {utc(exp)})", when=w)
         if nbf is not None and nbf > now + skew:
             R.fail(t2, "nbf", f"nbf {utc(nbf)} is in the future.", when=w)
+        # -- auth_time (v1.6.3): how long before issue the End-User last authenticated at the CSP
+        at = self._numeric_date(c, "auth_time", "4.9(a)")
+        if at is not None and iat is not None:
+            gap = iat - at
+            if gap < -skew:
+                R.warn("4.9(a)", "auth_time.order", f"auth_time {utc(at)} is after iat {utc(iat)}.",
+                       why="OIDC Core §2: auth_time is the time the End-User authentication occurred, so a token "
+                           "cannot be issued before it.",
+                       fix="Check the CSP's clock and how it sets auth_time.")
+            else:
+                head = (f"End-User last authenticated at the CSP {span(max(gap, 0))} before this token was issued "
+                        f"(auth_time {utc(at)}, iat {utc(iat)}). ")
+                tail = ("This is consistent with a sign-in for this token." if gap <= 600 + skew else
+                        "The token was issued from a refresh token or an existing CSP session, not from a new "
+                        "sign-in.")
+                R.info("4.9(a)", "auth_time.age", head + tail,
+                       why="OIDC Core §12.2: an ID Token issued on refresh keeps the auth_time of the original "
+                           "authentication. 10 minutes is the authorization-code lifetime RFC 6749 §4.1.2 "
+                           f"recommends. Reported, not judged: the {WG_2026_10_22} set no token or refresh-token "
+                           "lifetime.")
         # -- jti
         jti = c.get("jti")
         if isinstance(jti, str) and jti.strip():
@@ -1382,7 +1495,15 @@ class IasChecker:
         # -- gender
         if "gender" in c:
             g = c["gender"]
-            if isinstance(g, str) and g:
+            if isinstance(g, str) and g and g not in ("female", "male") and g.strip().lower() in GENDER_CODE:
+                R.ok(t2, "gender", "gender present", when=w)
+                R.warn("4.9(a)", "gender.value", f"gender value {R.phi(g)} abbreviates or changes the case of an "
+                       "OIDC-defined value.", when=w,
+                       why="OIDC Core §5.1 defines 'female' and 'male' and allows other values only when neither "
+                           "applies; IAS SOP §4.9(a) requires ID Tokens to conform to OIDC Core. A receiver that "
+                           "matches on 'female' / 'male' will not recognise this value.",
+                       fix="Send 'female' or 'male'.")
+            elif isinstance(g, str) and g:
                 lvl = "standard" if g in ("female", "male") else "non-standard OIDC value"
                 R.ok(t2, "gender", f"gender present ({lvl})", when=w)
             else:
@@ -2293,7 +2414,12 @@ class IasChecker:
             R.skip(ref, "sig.verify", "Signature not verified: no JWKS (see discovery/JWKS findings).")
             return
         p0, p1, p2 = tok.split(".")
-        data = f"{p0}.{p1}".encode("ascii")
+        # v1.6.1: if the header or payload is not base64url, also try the base64url form of the signing input, which is
+        # what the CSP signed if the token was converted to standard base64 after signing.
+        inputs = [("as received", f"{p0}.{p1}".encode("ascii"))]
+        canon = f"{b64url_canonical(p0)}.{b64url_canonical(p1)}"
+        if canon != f"{p0}.{p1}":
+            inputs.append(("base64url form", canon.encode("ascii")))
         try:
             sig = b64url_decode(p2)
         except (binascii.Error, ValueError) as ex:
@@ -2309,14 +2435,29 @@ class IasChecker:
                 except Exception:  # noqa: BLE001
                     continue
 
-        def try_verify(pub, pss=False) -> bool:
-            try:
-                pad = (padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.AUTO)
-                       if pss else padding.PKCS1v15())
-                pub.verify(sig, data, pad, hashes.SHA256())
-                return True
-            except (InvalidSignature, ValueError):
-                return False
+        def try_verify(pub, pss=False) -> Optional[str]:
+            """Name of the signing input the signature verifies over, or None."""
+            pad = (padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.AUTO)
+                   if pss else padding.PKCS1v15())
+            for label, data in inputs:
+                try:
+                    pub.verify(sig, data, pad, hashes.SHA256())
+                    return label
+                except (InvalidSignature, ValueError):
+                    continue
+            return None
+
+        def explain(label: Optional[str]) -> None:
+            if len(inputs) < 2:
+                return
+            if label == "as received":
+                R.info(ref, "sig.b64-source", "The signature verifies over the non-base64url text as received: the CSP "
+                       "signed it in this form, so the encoding defect (token.b64url) is the CSP's.")
+            elif label == "base64url form":
+                R.info(ref, "sig.b64-source", "The signature verifies only over the base64url form: the CSP signed a "
+                       "conforming token, and it was converted to standard base64 or padded after signing (by the "
+                       "IAS Provider, a gateway, or the capture). A recipient following RFC 7515 computes the signing "
+                       "input from the text it receives, so it would find this signature invalid.")
 
         kid = hdr.get("kid")
         cands = [(kd, pk) for kd, pk in rsa_keys if kd == kid]
@@ -2326,23 +2467,32 @@ class IasChecker:
                    fix="Causes: CSP rotated keys and the JWKS isn't updated yet (or you cached an old one); "
                        "token from the other environment's issuer (§4.3(e)); wrong iss.")
         for kd, pk in cands:
-            if try_verify(pk):
-                R.ok(ref, "sig.verify", f"RS256 signature VALID with kid={kd!r}", when=w)
+            used = try_verify(pk)
+            if used:
+                R.ok(ref, "sig.verify", f"RS256 signature VALID with kid={kd!r}"
+                     + (f" (over the {used})" if len(inputs) > 1 else ""), when=w)
+                explain(used)
                 return
         for kd, pk in rsa_keys:
-            if kd != kid and try_verify(pk):
+            used = try_verify(pk) if kd != kid else None
+            if used:
                 R.fail(ref, "sig.kid-mismatch", f"Signature verifies with kid={kd!r}, but header says "
                        f"kid={kid!r}.", when=w, fix="CSP is stamping the wrong kid (rotation bug).")
+                explain(used)
                 return
         for kd, pk in rsa_keys:
-            if try_verify(pk, pss=True):
+            used = try_verify(pk, pss=True)
+            if used:
                 R.fail(ref, "sig.pss", f"Signature is RSASSA-PSS (PS256-style) with kid={kd!r}, but the "
                        "header claims RS256.", when=w, fix="CSP must sign with PKCS#1 v1.5 (RS256).")
+                explain(used)
                 return
         if cands:
             mod_len = (cands[0][1].key_size + 7) // 8
             extra = (f" Signature is {len(sig)} bytes but modulus is {mod_len} bytes -- truncated/corrupted "
                      "or signed by a different-size key." if len(sig) != mod_len else "")
+            if len(inputs) > 1:
+                extra += " Tried over the token as received and over its base64url form."
             R.fail(ref, "sig.verify", f"RS256 signature INVALID for kid={kid!r}.{extra}", when=w,
                    fix="Causes: token modified after signing (claims edited, re-serialized, whitespace "
                        "inserted, base64 vs base64url conversion); token forged/test-signed; JWKS key "
@@ -2372,6 +2522,17 @@ class IasChecker:
             data = m.group(0)
             R.info("input", "xml.extract", "Extracted SOAP Envelope from a non-XML wrapper "
                    "(MTOM/multipart or HTTP capture).")
+        decl = re.match(rb"(\xef\xbb\xbf)?(\s*<\?xml\s[^>]*\?>)((?:\s*<\?xml\s[^>]*\?>)+)", data)
+        if decl:
+            n = 1 + len(re.findall(rb"<\?xml\s", decl.group(3)))
+            R.warn("input", "xml.decl", f"The capture has {n} XML declarations before the root element; XML 1.0 "
+                   "§2.8 allows one, at the very start. Removed the extra ones and checked the message.",
+                   why="As captured, the file is not well-formed XML, and a receiver given these bytes would reject "
+                       "the message. A repeated declaration usually comes from a logging or capture tool rather "
+                       "than from the sender.",
+                   fix="Check the message as sent on the wire. If the sender's message has the extra declaration, "
+                       "it must remove it.")
+            data = (decl.group(1) or b"") + decl.group(2) + data[decl.end():]
         try:
             return ET.fromstring(data)
         except ET.ParseError as e:
@@ -2435,6 +2596,19 @@ class IasChecker:
                         f"must be in SAML Attribute Name='{ID_TOKEN_ATTR_NAME}'.")
         return hits
 
+    def _saml_nameformat(self, x: ET.Element, name_ok: bool = False) -> None:
+        R, ref, w = self.R, "4.9(e)", "4.9"
+        nf = x.get("NameFormat")
+        if nf == ID_TOKEN_ATTR_NAMEFORMAT:
+            R.ok(ref, "saml.id_token.nameformat", "Attribute Name and NameFormat exact" if name_ok else
+                 "NameFormat is correct", when=w)
+        elif nf is None:
+            R.fail(ref, "saml.id_token.nameformat", "NameFormat attribute missing (defaults to "
+                   "'unspecified').", when=w, fix=f"Add NameFormat='{ID_TOKEN_ATTR_NAMEFORMAT}'.")
+        else:
+            R.fail(ref, "saml.id_token.nameformat", f"NameFormat {nf!r} != '{ID_TOKEN_ATTR_NAMEFORMAT}'.",
+                   when=w, fix=f"Set NameFormat='{ID_TOKEN_ATTR_NAMEFORMAT}'.")
+
     def _check_saml(self, env: ET.Element) -> Optional[dict]:
         R, ref, w = self.R, "4.9(e)", "4.9"
         assertions = [e for e in env.iter() if lname(e.tag) == "Assertion" and nsname(e.tag) == SAML_NS]
@@ -2465,6 +2639,7 @@ class IasChecker:
                        f"{[x.get('Name') for x in near]}.", when=w,
                        fix=f"Name MUST be exactly '{ID_TOKEN_ATTR_NAME}' (case-sensitive). FriendlyName "
                            "does not count.")
+                self._saml_nameformat(near[0])
                 txt = "".join(children_local(near[0], "AttributeValue")[0].itertext()) \
                     if children_local(near[0], "AttributeValue") else ""
                 if txt.strip():
@@ -2481,15 +2656,7 @@ class IasChecker:
             if len(idt) > 1:
                 R.warn(ref, "saml.id_token.multi", f"{len(idt)} id_token attributes; exactly one expected.")
             x = idt[0]
-            nf = x.get("NameFormat")
-            if nf == ID_TOKEN_ATTR_NAMEFORMAT:
-                R.ok(ref, "saml.id_token.nameformat", "Attribute Name and NameFormat exact", when=w)
-            elif nf is None:
-                R.fail(ref, "saml.id_token.nameformat", "NameFormat attribute missing (defaults to "
-                       "'unspecified').", when=w, fix=f"Add NameFormat='{ID_TOKEN_ATTR_NAMEFORMAT}'.")
-            else:
-                R.fail(ref, "saml.id_token.nameformat", f"NameFormat {nf!r} != '{ID_TOKEN_ATTR_NAMEFORMAT}'.",
-                       when=w)
+            self._saml_nameformat(x, name_ok=True)
             vals = children_local(x, "AttributeValue")
             if len(vals) != 1:
                 R.fail(ref, "saml.id_token.values", f"id_token attribute has {len(vals)} AttributeValue "
@@ -2742,18 +2909,21 @@ class IasChecker:
                          "MATCH" if ok else ("ABSENT" if len(p["given"]) <= 1 else "MISMATCH")))
         bd = c.get("birthdate")
         if isinstance(bd, str) and bd:
-            if not p["birth"]:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", bd) or bd.startswith("0000"):
+                rows.append(("birthdate", bd, p["birth"][0] if p["birth"] else None, "UNCOMPARABLE"))
+            elif not p["birth"]:
                 rows.append(("birthdate", bd, None, "ABSENT"))
             else:
                 rows.append(("birthdate", bd, p["birth"][0],
                              "MATCH" if bd.replace("-", "") in [b[:8] for b in p["birth"]] else "MISMATCH"))
         g = c.get("gender")
         if isinstance(g, str) and g:
-            want = {"female": "F", "male": "M"}.get(g.lower(), "UN")
+            want = GENDER_CODE.get(g.strip().lower(), "UN")
+            body = {GENDER_CODE.get(x.strip().lower(), x.strip().upper()) for x in p["gender"] if isinstance(x, str)}
             if not p["gender"]:
                 rows.append(("gender", g, None, "ABSENT"))
             else:
-                rows.append(("gender", g, p["gender"][0], "MATCH" if want in p["gender"] else "MISMATCH"))
+                rows.append(("gender", g, p["gender"][0], "MATCH" if want in body else "MISMATCH"))
         if isinstance(c.get("address"), dict):
             rows += self._addr_rows(c["address"], p["addresses"], "address")
         ha = c.get("historical_address")
@@ -2805,6 +2975,15 @@ class IasChecker:
             if not re.fullmatch(r"\d{8}(\d{2,6})?([+-]\d{4})?", b):
                 R.warn("4.4(d)", "pd.birthTime", f"livingSubjectBirthTime {R.phi(b)} is not an HL7 TS "
                        "(YYYYMMDD...).")
+        for gc in p["gender"]:
+            if gc not in HL7_GENDER_CODES:
+                spelled = GENDER_CODE.get(gc.strip().lower()) is not None
+                R.warn("4.4(e)", "pd.gender.code", f"livingSubjectAdministrativeGender code {R.phi(gc)} is not an "
+                       "HL7 AdministrativeGender code (F, M or UN)." + (" It spells out a valid code, so the comparison "
+                       "with the token used that code." if spelled else ""),
+                       why="HL7 v3 AdministrativeGender (2.16.840.1.113883.5.1) has the codes F, M and UN. A "
+                           "responding gateway that matches on these codes may not recognise this value.",
+                       fix="Send F, M or UN.")
         for t in p["telecom"]:
             if not re.match(r"^(mailto|tel):", t, re.I):
                 R.warn("4.4(d)", "pd.telecom", f"patientTelecom value {R.phi(t)} lacks a 'mailto:' / 'tel:' "
@@ -2821,8 +3000,12 @@ class IasChecker:
                        "Compliance Bulletin No. 2 §3(b)/(c)), so it is not an IAL2-verified demographic and §4.4(e) "
                        "does not require it in the XCPD body. Not compared.")
         bad = 0
+        skipped = [fld for fld, _, _, res in rows if res == "UNCOMPARABLE"]
+        for fld in skipped:
+            R.info("4.4(e)", f"pd.vs.token.{fld}", f"Not compared: the token {fld} is not a full YYYY-MM-DD date "
+                   "(see birthdate.format), so it cannot be matched reliably with the XCPD body.")
         for fld, tv, bv, res in rows:
-            if res == "MATCH":
+            if res in ("MATCH", "UNCOMPARABLE"):
                 continue
             bad += 1
             soft = fld.endswith(".country")
@@ -2841,8 +3024,8 @@ class IasChecker:
             else:
                 R.fail("4.4(e)", f"pd.vs.token.{fld}", msg, fix=fix)
         if not bad:
-            R.ok("4.4(e)", "pd.vs.token", f"All {len(rows)} verified token demographics are carried in "
-                 "the XCPD body and agree")
+            R.ok("4.4(e)", "pd.vs.token", f"All {len(rows) - len(skipped)} compared verified token demographics are "
+                 "carried in the XCPD body and agree" + (f" (not compared: {', '.join(skipped)})" if skipped else ""))
 
     def process_pd_response(self, path: str) -> None:
         self.R.set_artifact(f"XCPD response {path}")
@@ -2913,7 +3096,7 @@ class IasChecker:
             rows = self._compare(claims, self._demo_from_person(person))
             table = "; ".join(f"{f}={r}" for f, _, _, r in rows)
             key_bad = [f for f, _, _, r in rows
-                       if f in ("given_name", "family_name", "birthdate") and r not in ("MATCH", "PARTIAL")]
+                       if f in ("given_name", "family_name", "birthdate") and r not in ("MATCH", "PARTIAL", "UNCOMPARABLE")]
             other_bad = [f for f, _, _, r in rows if r == "MISMATCH" and f not in key_bad]
             if key_bad:
                 R.add("4.7(a)", f"doublecheck.subject[{i}]", "WARN", f"Double-Check aid: LIKELY NO-MATCH "
@@ -3210,8 +3393,12 @@ class IasChecker:
         p = self._demo_from_fhir_patient(pi)
         rows = self._compare(claims, p)
         bad = 0
+        skipped = [fld for fld, _, _, res in rows if res == "UNCOMPARABLE"]
+        for fld in skipped:
+            R.info(ref, f"piv.{fld}", f"Not compared: the token {fld} is not a full YYYY-MM-DD date (see "
+                   "birthdate.format), so it cannot be matched reliably with patient_information.")
         for fld, tv, bv, res in rows:
-            if res == "MATCH":
+            if res in ("MATCH", "UNCOMPARABLE"):
                 continue
             bad += 1
             msg = {"ABSENT": f"verified '{fld}' {R.phi(tv)} is in the IAL2 token but missing from patient_information.",
@@ -3222,7 +3409,8 @@ class IasChecker:
                 "so the responder's match and the IAS SOP demographics agree; mismatches lead to invalid_grant "
                 "(FF §6.11 IAS(5)).")
         if not bad:
-            R.ok(ref, "piv", f"patient_information agrees with all {len(rows)} verified token demographics")
+            R.ok(ref, "piv", f"patient_information agrees with all {len(rows) - len(skipped)} compared verified token "
+                 "demographics" + (f" (not compared: {', '.join(skipped)})" if skipped else ""))
         cs = self._b2_contact(claims)
         if any(t.startswith("tel:") for t in p["telecom"]) and not cs["ph_ok"]:
             R.info(ref, "piv.extra", "patient_information has a phone number the IAL2 token does not verify "

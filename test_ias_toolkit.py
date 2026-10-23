@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assertion-based regression suite for the IAS toolkit (v1.6.0) (ias_sop_checker.py, the seven schema layers and
+"""Assertion-based regression suite for the IAS toolkit (v1.6.5) (ias_sop_checker.py, the seven schema layers and
 make_ias_test_fixtures.py). QHIN Compliance Bulletin No. 2 applies by default (evaluation date on or after
 2026-10-13); tests of the SOP-text reading pass --bulletin2 off. Keep all toolkit files in one directory, then run:
 
@@ -612,6 +612,118 @@ class IasToolkit(unittest.TestCase):
         msg = [x["message"] for x in f if x["check"] == "token.response.refresh"][0]
         self.assertIn("refresh_token_expires_in=2592000", msg)
         self.assertNoFail(f)
+
+
+    # ------------------------------------------------------------ v1.6.1: lenient base64
+    def test_140_converted_to_standard_base64_after_signing(self):
+        f = self.run_checker("--token-file", "tok_b64_converted.jwt", *OFFLINE, *AUD)
+        self.assertStatus(f, "token.b64url", "FAIL")                          # still non-conformant
+        self.assertStatus(f, "token.b64.lenient", "INFO")
+        self.assertStatus(f, "tefca_ial2claims_version", "PASS")              # claims were decoded and checked
+        self.assertStatus(f, "aud.expected", "PASS")
+        self.assertStatus(f, "sig.verify", "PASS")
+        msg = [x["message"] for x in f if x["check"] == "sig.b64-source"]
+        self.assertTrue(msg and "only over the base64url form" in msg[0], msg)
+
+    def test_141_csp_signed_standard_base64(self):
+        f = self.run_checker("--token-file", "tok_b64_std_signed.jwt", *OFFLINE)
+        self.assertStatus(f, "token.b64url", "FAIL")
+        self.assertStatus(f, "sig.verify", "PASS")
+        msg = [x["message"] for x in f if x["check"] == "sig.b64-source"]
+        self.assertTrue(msg and "as received" in msg[0], msg)
+
+    def test_142_quoted_token_is_unwrapped(self):
+        f = self.run_checker("--token-file", "tok_quoted.txt", *OFFLINE)
+        self.assertStatus(f, "token.quoted", "WARN")
+        self.assertStatus(f, "sig.verify", "PASS")
+        self.assertNoFail(f)
+
+    def test_143_undecodable_part_still_stops(self):
+        f = self.run_checker("--token-file", "tok_b64_junk.jwt", *OFFLINE)
+        self.assertStatus(f, "token.b64url", "FAIL")
+        self.assertEqual(self.st(f, "tefca_ial2claims_version"), set())       # no claim checks after this
+        self.assertEqual(self.st(f, "sig.verify"), set())
+
+    def test_144_conforming_token_unchanged(self):
+        f = self.run_checker("--token-file", "good.jwt", *OFFLINE)
+        self.assertEqual(self.st(f, "token.b64url") | self.st(f, "sig.b64-source"), set())
+        self.assertStatus(f, "sig.verify", "PASS")
+
+    # ------------------------------------------------------------ v1.6.2: gender codes
+    def test_150_gender_female_matches_xcpd_f(self):
+        f = self.run_checker("--soap", "pd_gender_female.xml", *OFFLINE, *AUD)
+        self.assertStatus(f, "pd.vs.token", "PASS")
+        self.assertEqual(self.st(f, "gender.value"), set())
+        self.assertNoFail(f)
+
+    def test_151_gender_letter_code_warns_but_matches(self):
+        f = self.run_checker("--soap", "pd_gender_letter.xml", *OFFLINE, *AUD)
+        self.assertStatus(f, "gender.value", "WARN")
+        self.assertEqual(self.st(f, "pd.vs.token.gender"), set())              # same code as the body: no mismatch
+        self.assertStatus(f, "pd.vs.token", "PASS")
+        self.assertNoFail(f)
+
+    def test_152_gender_mismatch_still_fails(self):
+        f = self.run_checker("--soap", "pd_gender_mismatch.xml", *OFFLINE, *AUD)
+        self.assertStatus(f, "pd.vs.token.gender", "FAIL")
+
+    # ------------------------------------------------------------ v1.6.3: auth_time age
+    def test_160_auth_time_long_before_iat_reports_refresh(self):
+        gap = 6 * 86400 + 21 * 3600 + 51 * 60
+        f = self.payload("valid-baseline-v3.json", mutate=lambda c: c.update(auth_time=c["iat"] - gap))
+        self.assertStatus(f, "auth_time.age", "INFO")
+        msg = [x["message"] for x in f if x["check"] == "auth_time.age"][0]
+        self.assertIn("6 d 21 h 51 min before", msg)
+        self.assertIn("refresh token or an existing CSP session", msg)
+        self.assertNoFail(f)
+
+    def test_161_auth_time_just_before_iat_reads_as_sign_in(self):
+        f = self.payload("valid-baseline-v3.json", mutate=lambda c: c.update(auth_time=c["iat"] - 45))
+        msg = [x["message"] for x in f if x["check"] == "auth_time.age"][0]
+        self.assertIn("45 s before", msg)
+        self.assertIn("consistent with a sign-in", msg)
+        self.assertEqual(self.st(self.payload("valid-baseline-v3.json"), "auth_time.age"), set())  # absent: silent
+
+    def test_162_auth_time_after_iat_or_not_a_number(self):
+        f = self.payload("valid-baseline-v3.json", mutate=lambda c: c.update(auth_time=c["iat"] + 3600))
+        self.assertStatus(f, "auth_time.order", "WARN")
+        self.assertEqual(self.st(f, "auth_time.age"), set())
+        f = self.payload("valid-baseline-v3.json", mutate=lambda c: c.update(auth_time=str(c["iat"] - 60)))
+        self.assertStatus(f, "auth_time.type", "FAIL")                         # schema agrees: no drift
+
+    # ------------------------------------------------------------ v1.6.4: capture tolerance
+    def test_170_repeated_xml_declaration_is_tolerated(self):
+        f = self.run_checker("--soap", "pd_double_xml_decl.xml", *OFFLINE, *AUD)
+        self.assertStatus(f, "xml.decl", "WARN")
+        self.assertEqual(self.st(f, "xml.parse"), set())
+        self.assertStatus(f, "sig.verify", "PASS")                            # the token was found and checked
+        self.assertStatus(f, "pd.vs.token", "PASS")
+        self.assertNoFail(f)
+        self.assertEqual(self.st(self.run_checker("--soap", "pd.xml", *OFFLINE), "xml.decl"), set())
+
+    def test_171_misnamed_attribute_nameformat_is_checked(self):
+        f = self.run_checker("--soap", "pd_bad.xml", *OFFLINE)
+        self.assertStatus(f, "saml.id_token.name", "FAIL")
+        self.assertStatus(f, "saml.id_token.nameformat", "FAIL")              # pd_bad.xml has no NameFormat
+
+    def test_172_non_iso_birthdate_fails_once(self):
+        f = self.run_checker("--soap", "pd_birthdate_not_iso.xml", *OFFLINE, *AUD)
+        self.assertStatus(f, "birthdate.format", "FAIL")
+        self.assertEqual(self.st(f, "pd.vs.token.birthdate"), {"INFO"})       # not a second FAIL
+        self.assertStatus(f, "pd.vs.token", "PASS")
+        fails = [x["check"] for x in f if x["status"] == "FAIL"]
+        self.assertEqual(fails, ["birthdate.format"], fails)
+
+    # ------------------------------------------------------------ v1.6.5: XCPD gender code
+    def test_180_spelled_out_gender_code_warns_but_matches(self):
+        f = self.run_checker("--soap", "pd_gender_spelled_out.xml", *OFFLINE, *AUD)
+        self.assertStatus(f, "pd.gender.code", "WARN")
+        self.assertStatus(f, "gender.value", "WARN")
+        self.assertEqual(self.st(f, "pd.vs.token.gender"), set())
+        self.assertStatus(f, "pd.vs.token", "PASS")
+        self.assertNoFail(f)
+        self.assertEqual(self.st(self.run_checker("--soap", "pd_gender_female.xml", *OFFLINE, *AUD), "pd.gender.code"),
+                         set())                                                # code F: nothing to report
 
 
 if __name__ == "__main__":

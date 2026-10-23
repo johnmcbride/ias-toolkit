@@ -203,6 +203,35 @@ dump("csp_token_response_refresh.json",
      {"id_token": G, "access_token": "at-" + uuid.uuid4().hex, "token_type": "Bearer", "expires_in": 300,
       "refresh_token": "rt-" + uuid.uuid4().hex, "refresh_token_expires_in": 2592000},
      "CSP token response with a refresh_token -> token.response.refresh INFO (the SOP is silent on refresh tokens)")
+# ---- v1.6.1: tokens whose parts are not base64url (standard base64 and/or '=' padding)
+def std_b64(seg):
+    s = seg.replace("-", "+").replace("_", "/")
+    return s + "=" * (-len(s) % 4)
+
+
+def padded_variant():
+    """Claims whose base64url payload needs '=' padding, so a standard-base64 copy always differs from it."""
+    for n in range(8):
+        c = variant(jti=str(uuid.uuid4()) + "x" * n)
+        if len(b64u(json.dumps(c).encode())) % 4:
+            return c
+    raise RuntimeError("no padded variant")
+
+
+HDR = {"alg": "RS256", "kid": "k1", "typ": "JWT"}
+_conv = sign(HDR, padded_variant(), csp_key).split(".")
+dump("tok_b64_converted.jwt", ".".join(std_b64(x) for x in _conv),
+     "BAD: signed as base64url, then converted to standard base64 with padding -> token.b64url FAIL; decoded "
+     "leniently; sig.verify PASS over the base64url form; sig.b64-source INFO says it was converted after signing")
+_si = std_b64(b64u(json.dumps(HDR).encode())) + "." + std_b64(b64u(json.dumps(padded_variant()).encode()))
+dump("tok_b64_std_signed.jwt", _si + "." + std_b64(b64u(csp_key.sign(_si.encode(), padding.PKCS1v15(), hashes.SHA256()))),
+     "BAD: the CSP signed standard-base64 text -> token.b64url FAIL; sig.verify PASS as received; sig.b64-source INFO "
+     "says the CSP produced the non-standard encoding")
+dump("tok_quoted.txt", '"' + G + '"', "WARN: token wrapped in quotation marks -> token.quoted WARN, then checked normally")
+_junk = G.split(".")
+dump("tok_b64_junk.jwt", _junk[0] + "." + _junk[1][:20] + "%2B" + _junk[1][20:] + "." + _junk[2],
+     "BAD: payload contains '%' (URL-encoded) -> token.b64url FAIL and no further token checks")
+
 dump("tok_b2_unverified_email.jwt", TOK_B2_UNV,
      "Signed token with an unverified email and a verified phone: temporarily valid under Bulletin 2 §3(b)")
 
@@ -258,6 +287,24 @@ dump("pd_bad.xml", soap(pd.replace("<given>Ann</given>", "").replace("19800229",
 dump("pd_b2_unverified_email.xml",
      soap(pd.replace('<patientTelecom><value value="mailto:mary@example.com"/></patientTelecom>', ""), tok=TOK_B2_UNV),
      "GOOD (Bulletin 2 §3(b)): token email is unverified, so the XCPD body need not carry it (§4.4(e))")
+# v1.6.2: token gender versus the XCPD AdministrativeGender code
+def with_gender(value):
+    return sign({"alg": "RS256", "kid": "k1", "typ": "JWT"}, dict(good, gender=value), csp_key)
+
+
+dump("pd_gender_female.xml", soap(pd, tok=with_gender("female")),
+     "GOOD: token gender 'female', XCPD body F -> pd.vs.token PASS")
+dump("pd_gender_letter.xml", soap(pd, tok=with_gender("F")),
+     "WARN: token gender 'F' (not an OIDC value) -> gender.value WARN; still matches XCPD body F")
+dump("pd_gender_mismatch.xml", soap(pd.replace('<value code="F"/>', '<value code="M"/>'), tok=with_gender("female")),
+     "BAD: token gender 'female', XCPD body M -> pd.vs.token.gender FAIL")
+dump("pd_double_xml_decl.xml", '<?xml version="1.0" encoding="UTF-8"?>\n\n' + soap(pd),
+     "WARN: two XML declarations, as some capture tools write them -> xml.decl WARN, then checked normally")
+dump("pd_gender_spelled_out.xml", soap(pd.replace('<value code="F"/>', '<value code="MALE"/>'), tok=with_gender("Male")),
+     "WARN x2: token gender 'Male' (gender.value) and XCPD code 'MALE' (pd.gender.code); both mean male, so no mismatch")
+dump("pd_birthdate_not_iso.xml",
+     soap(pd, tok=sign({"alg": "RS256", "kid": "k1", "typ": "JWT"}, dict(good, birthdate="2/29/80"), csp_key)),
+     "BAD: token birthdate '2/29/80' -> birthdate.format FAIL; not compared with the XCPD body (INFO), no second FAIL")
 dump("dq.xml", soap('<query:AdhocQueryRequest xmlns:query="urn:oasis:names:tc:ebxml-regrep:xsd:query:3.0"/>'),
      "GOOD: XCA Document Query with token")
 dump("dr.mtom", "--uuid:1\r\nContent-Type: application/xop+xml\r\n\r\n"

@@ -1,4 +1,4 @@
-# IAS conformance toolkit 1.6.0: run guide
+# IAS conformance toolkit 1.6.5: run guide
 
 This guide takes you from the zip file to checking real TEFCA IAS artifacts. It is written for someone comfortable with a terminal who has not used the toolkit before. A first practice run takes about 15 minutes.
 
@@ -20,7 +20,7 @@ Commands are shown for macOS and Linux. On Windows they are the same with `py` i
 ### 1.1 What you need
 
 - Python 3.10 or later is recommended. Check with `python3 --version`.
-  - The toolkit also runs on Python 3.8 and 3.9: the 54 tests pass on 3.8.20 with cryptography 47.0.0 and jsonschema 4.23.0. On 3.8, cryptography prints a `CryptographyDeprecationWarning` at start-up; it is harmless, but future cryptography releases will not install on 3.8.
+  - The toolkit also runs on Python 3.8 and 3.9: the 69 tests pass on 3.8.20 with cryptography 47.0.0 and jsonschema 4.23.0. On 3.8, cryptography prints a `CryptographyDeprecationWarning` at start-up; it is harmless, but future cryptography releases will not install on 3.8.
   - On macOS, `python3` may be an old system version. Install a current Python from python.org or Homebrew (`brew install python@3.12`), then create the virtual environment with it, for example `python3.12 -m venv .venv`.
 - Two packages: `cryptography`, used for signature checks and the fixture generator, and `jsonschema` 4.18 or later, used for the schema cross-check.
 - Network access to the CSP's issuer **only** if you want the checker to fetch discovery documents and JWKS live. Everything can also run offline (section 3.3).
@@ -29,7 +29,7 @@ Commands are shown for macOS and Linux. On Windows they are the same with `py` i
 
 ```bash
 mkdir ias-work && cd ias-work
-unzip ias_toolkit_1.6.0.zip -d ias_toolkit
+unzip ias_toolkit_1.6.5.zip -d ias_toolkit
 ```
 
 Keep all the files together in `ias_toolkit/`. The checker loads the seven `*.schema.json` files from its own folder; to keep them elsewhere, pass `--schema-dir DIR`.
@@ -52,7 +52,7 @@ python3 test_ias_toolkit.py
 cd ..
 ```
 
-Expect `Ran 54 tests ... OK` after about a minute. The suite generates its own fixtures in a temporary folder and starts a local web server on a free port, so it needs no network access. If any test fails, stop there: the installation or the files are not as shipped. To confirm the files are as shipped, check the SHA-256 list in MANIFEST.md with `sha256sum -c`.
+Expect `Ran 69 tests ... OK` after about a minute. The suite generates its own fixtures in a temporary folder and starts a local web server on a free port, so it needs no network access. If any test fails, stop there: the installation or the files are not as shipped. To confirm the files are as shipped, check the SHA-256 list in MANIFEST.md with `sha256sum -c`.
 
 ---
 
@@ -99,7 +99,7 @@ What to expect:
 The report starts like this:
 
 ```
-IAS SOP checker v1.6.0 -- Exchange Purpose Implementation SOP: Individual Access Services (IAS) v3.0
+IAS SOP checker v1.6.5 -- Exchange Purpose Implementation SOP: Individual Access Services (IAS) v3.0
 Evaluated as of 2026-10-22  |  token clock now  |  PHI masked
 Rule set: IAS SOP v3.0 + QHIN Compliance Bulletin No. 2 v1.0 (evaluation date 2026-10-22 >= issue date; ...)
 ```
@@ -211,6 +211,8 @@ The checker reads `iss` from the token. It then fetches `<iss>/.well-known/openi
 To paste a token straight in instead of using a file, run `--token "$(cat <id_token.jwt>)"`.
 
 If the file is the CSP's whole token response, the checker uses `id_token`. If the response also carries a `refresh_token`, the checker reports it, with any lifetime field, as INFO. The SOP says nothing about refresh tokens, and the workgroup has not set a lifetime.
+
+A refresh also shows in the ID token itself. When the token carries auth_time, `auth_time.age` (INFO) says how long before issue the person last signed in at the CSP. More than 10 minutes means the token came from a refresh token or an existing CSP session, not a new sign-in.
 
 ### 3.3 Offline (no network)
 
@@ -417,6 +419,14 @@ Schemas cannot check signatures, the current time or the RCE Directory, or anyth
 | `udap.ctype` WARN in the practice run | Python's simple HTTP server's content type | Expected in practice only |
 | `BrokenPipeError` after `--obligations ... \| head` | Python stops writing when `head` closes the pipe | Write to a file instead |
 | Exit code 2 and a usage message | No input option, or an invalid option value | Give at least one input; see `--help` |
+| `token.b64url` FAIL followed by `token.b64.lenient` | A token part uses standard-base64 characters (`+`, `/`) or `=` padding, which RFC 7515 does not allow | The other checks still ran on the decoded token. Read `sig.b64-source`: it says whether the CSP signed it that way or it was converted after signing, which tells you whom to ask for a fix |
+| `token.b64url` FAIL with "cannot be decoded" and no other token findings | The token contains characters that are not base64 at all, such as `%` from URL-encoding | Get the token as the CSP issued it |
+| `gender.value` WARN | The token's gender is `F`, `M` or another short form, not `female` or `male` | Ask the CSP to send the OIDC values. The XCPD comparison still treats `F` as female and `M` as male |
+| `pd.gender.code` WARN | The XCPD body's livingSubjectAdministrativeGender code is not F, M or UN, for example `MALE` | Ask the sender to use the HL7 codes. A spelled-out `MALE` or `FEMALE` is still compared with the token |
+| `auth_time.order` WARN | The token says the person authenticated after the token was issued | Check the CSP's clock and how it sets auth_time. Both times come from the token, so `--at` does not affect this |
+| `xml.decl` WARN | The capture has two or more `<?xml ...?>` declarations at the top, which is not well-formed XML | The checker removed the extra ones and carried on. Find out whether the sender sent it that way or the capture tool added it; only the first is a sender problem |
+| `xml.parse` FAIL | The capture is not well-formed XML for another reason: truncated, an unescaped `&` or `<`, or an undeclared namespace prefix | Take the capture again, or extract the whole SOAP Envelope |
+| `pd.vs.token.birthdate` INFO "Not compared" | The token birthdate is not YYYY-MM-DD, which `birthdate.format` already fails | Fix the token's format; the comparison runs again once it is YYYY-MM-DD |
 | `aud.case` WARN for `URN:OID:...` | The `urn:oid:` prefix is not lower case. It is still a valid OID URN (RFC 3061, RFC 8141), so this is not a FAIL, but the FHIR oid form the RCE IAS workgroup recommends is lower case | Ask the CSP to emit `urn:oid:` in lower case |
 | `address.country` FAIL for `UK` or another two-letter value | country must be an assigned ISO 3166-1 alpha-2 code in upper case (RCE IAS workgroup clarification, October 22, 2026) | Use the assigned code, for example `GB` for the United Kingdom |
 | `zsh: command not found: --discovery-file` (or another option), and the report ignores options you typed | A multi-line command was cut short by a blank line or a space after `\` | Re-run it on one line, or paste it again without blank lines |
