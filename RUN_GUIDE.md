@@ -22,7 +22,10 @@ Commands are shown for macOS and Linux. On Windows they are the same with `py` i
 - Python 3.10 or later is recommended. Check with `python3 --version`.
   - The toolkit also runs on Python 3.8 and 3.9: the 69 tests pass on 3.8.20 with cryptography 47.0.0 and jsonschema 4.23.0. On 3.8, cryptography prints a `CryptographyDeprecationWarning` at start-up; it is harmless, but future cryptography releases will not install on 3.8.
   - On macOS, `python3` may be an old system version. Install a current Python from python.org or Homebrew (`brew install python@3.12`), then create the virtual environment with it, for example `python3.12 -m venv .venv`.
-- Two packages: `cryptography`, used for signature checks and the fixture generator, and `jsonschema` 4.18 or later, used for the schema cross-check.
+- Two packages: `cryptography`, used for signature checks and the fixture generator, and `jsonschema` 4.18 or later, used for the schema cross-check. You can view and install all the requirements by utilizing the requirements.txt file.
+  ``` bash
+  pip install -r requirements.txt
+  ```
 - Network access to the CSP's issuer **only** if you want the checker to fetch discovery documents and JWKS live. Everything can also run offline (section 3.3).
 
 ### 1.2 Unzip into one folder
